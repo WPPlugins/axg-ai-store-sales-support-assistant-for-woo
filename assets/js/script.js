@@ -10,6 +10,24 @@ if (!axWooSid) {
     sessionStorage.setItem('ax_woo_sid', axWooSid);
 }
 
+function axWooTriggerProactive(message) {
+    const box = document.getElementById('ax-woo-chat-box');
+    if (!box) return;
+    
+    // Check if chat is already open or already has messages to avoid interrupting
+    if (box.style.display === 'flex') return;
+    const history = JSON.parse(sessionStorage.getItem('ax_woo_chat_history') || '[]');
+    if (history.length > 0) return; // Don't interrupt existing conversation
+
+    // Open chat box
+    box.style.display = 'flex';
+    const input = document.getElementById('ax-woo-chat-input');
+    if (input) input.focus();
+
+    // Append and save the proactive greeting
+    axWooAppend(message, 'bot');
+}
+
 // 2. Initialize and Restore Chat History on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
     // Check premium state from localStorage and toggle branding
@@ -28,6 +46,71 @@ document.addEventListener('DOMContentLoaded', () => {
                 axWooAppend(msg.text, msg.sender, false);
             });
         }
+    }
+
+    // Check and initialize Proactive Sales Triggers
+    const lang = axgaists_settings.language || 'en';
+
+    // A. Inactivity Trigger (45 seconds)
+    if (axgaists_settings.trigger_inactivity === 1) {
+        let inactivityTimer;
+        let inactivity_greeting = "Hello! Do you need help finding anything today? Feel free to ask!";
+        if (lang === 'sv') {
+            inactivity_greeting = "Hej! Behöver du hjälp med att hitta något idag? Fråga mig gärna!";
+        } else if (lang === 'de') {
+            inactivity_greeting = "Hallo! Brauchen Sie Hilfe beim Finden von etwas heute? Fragen Sie mich gerne!";
+        }
+
+        const resetInactivityTimer = () => {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => {
+                axWooTriggerProactive(inactivity_greeting);
+            }, 45000); // 45 seconds
+        };
+
+        // Reset on any user activity
+        window.addEventListener('mousemove', resetInactivityTimer);
+        window.addEventListener('keypress', resetInactivityTimer);
+        window.addEventListener('scroll', resetInactivityTimer);
+        window.addEventListener('click', resetInactivityTimer);
+        resetInactivityTimer(); // Start the timer
+    }
+
+    // B. Deep Scroll Trigger (>75%)
+    if (axgaists_settings.trigger_scroll === 1) {
+        let scroll_greeting = "It looks like you're reading up! Let me know if you have any questions about our products, shipping, or returns.";
+        if (lang === 'sv') {
+            scroll_greeting = "Det ser ut som att du läser på! Säg till om du har några funderingar kring våra produkter, frakt eller villkor.";
+        } else if (lang === 'de') {
+            scroll_greeting = "Es sieht so aus, als ob Sie aufmerksam lesen! Lassen Sie mich wissen, wenn Sie Fragen zu unseren Produkten, dem Versand oder den Rücksendungen haben.";
+        }
+
+        const handleScrollTrigger = () => {
+            const scrollPercent = (window.scrollY + window.innerHeight) / document.documentElement.scrollHeight;
+            if (scrollPercent > 0.75) {
+                axWooTriggerProactive(scroll_greeting);
+                window.removeEventListener('scroll', handleScrollTrigger); // Trigger once per load
+            }
+        };
+        window.addEventListener('scroll', handleScrollTrigger);
+    }
+
+    // C. Exit Intent Trigger
+    if (axgaists_settings.trigger_exit === 1) {
+        let exit_greeting = "Wait! Did you know you can get 10% off your first order? Ask me for a discount code and I'll hook you up!";
+        if (lang === 'sv') {
+            exit_greeting = "Vänta lite! Visste du att du kan få 10% rabatt på din beställning? Fråga mig om en rabattkod så fixar jag det!";
+        } else if (lang === 'de') {
+            exit_greeting = "Warten Sie mal! Wussten Sie, dass Sie 10% Rabatt auf Ihre Bestellung erhalten können? Fragen Sie mich nach einem Rabattcode!";
+        }
+
+        const handleExitIntent = (e) => {
+            if (e.clientY < 10) { // Mouse leaves at the top boundary
+                axWooTriggerProactive(exit_greeting);
+                document.removeEventListener('mouseleave', handleExitIntent); // Trigger once per load
+            }
+        };
+        document.addEventListener('mouseleave', handleExitIntent);
     }
 });
 

@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgaists_chat]
- * Version: 1.1.3
+ * Version: 1.1.4
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -82,6 +82,9 @@ function axgaists_settings_init() {
     register_setting( 'axgaists_settings_group', 'axgaists_color_theme', array( 'sanitize_callback' => 'sanitize_hex_color' ) );
     register_setting( 'axgaists_settings_group', 'axgaists_contact_email', array( 'sanitize_callback' => 'sanitize_email' ) );
     register_setting( 'axgaists_settings_group', 'axgaists_persona', array( 'sanitize_callback' => 'sanitize_textarea_field' ) );
+    register_setting( 'axgaists_settings_group', 'axgaists_trigger_inactivity', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
+    register_setting( 'axgaists_settings_group', 'axgaists_trigger_scroll', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
+    register_setting( 'axgaists_settings_group', 'axgaists_trigger_exit', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
 }
 
 // --- Step 3: Admin Options Page ---
@@ -100,6 +103,12 @@ function axgaists_options_page() {
     $color_desc = "The accent theme color of your floating chat widget.";
     $email_desc = "The email address your chatbot will provide if it cannot find an answer.";
     $persona_desc = "Describe your chatbot's persona and store instructions. For example: 'You are a warm, professional fashion consultant for our apparel store. Guide the customer to choose the best style and upsell matching accessories!'";
+
+    $triggers_title = "Proactive Sales Triggers";
+    $trigger_inactivity_lbl = "Inactivity Trigger (45s) - Opens the chat after 45 seconds of idle time.";
+    $trigger_scroll_lbl = "Deep Scroll Trigger (>75%) - Opens the chat when the user scrolls past 75% of the page.";
+    $trigger_exit_lbl = "Exit Intent Trigger - Opens the chat with a 10% discount offer when the user is about to leave.";
+    $triggers_desc = "Enable or disable individual sales-driving triggers. All triggers are deactivated by default.";
 
     // Pricing Translations
     // Pricing Translations
@@ -127,6 +136,12 @@ function axgaists_options_page() {
         $email_desc = "E-postadress som boten ber besökaren kontakta vid specifika kundtjänstfrågor.";
         $persona_desc = "Beskriv bottens roll och säljinstruktioner. Exempel: 'Du är en engagerad och kunnig säljare för vår sportbutik. Tipsa snyggt om passande kläder och föreslå merförsäljning av tillbehör!'";
 
+        $triggers_title = "Proaktiva Sälj-triggers";
+        $trigger_inactivity_lbl = "Inaktivitetstrigger (45s) - Öppnar chatten automatiskt efter 45 sekunders inaktivitet.";
+        $trigger_scroll_lbl = "Djupt scrollande (>75%) - Öppnar chatten automatiskt när kunden har läst förbi 75% av sidan.";
+        $trigger_exit_lbl = "Avsikt att lämna (Exit-Intent) - Räddar kunden med ett 10% rabatt-erbjudande när de försöker lämna sidan.";
+        $triggers_desc = "Aktivera eller inaktivera individuella sälj-triggers. Avstängda som standard.";
+
         $pricing_title = "Uppgradera till Premium & maximera din försäljning! 🚀💸";
         $pricing_desc = "Vår intelligenta AI-säljare är redo att lyfta din butik dygnet runt. Välj det tillväxt-paket som passar din e-handel bäst!";
         $bronze_title = "Starter-paket";
@@ -145,6 +160,12 @@ function axgaists_options_page() {
         $color_desc = "The accent theme color of your floating chat widget.";
         $email_desc = "The email address your chatbot will provide if it cannot find an answer.";
         $persona_desc = "Describe your chatbot's persona and store instructions. For example: 'You are a warm, professional fashion consultant for our apparel store. Guide the customer to choose the best style and upsell matching accessories!'";
+
+        $triggers_title = "Proactive Sales Triggers";
+        $trigger_inactivity_lbl = "Inactivity Trigger (45s) - Opens the chat after 45 seconds of idle time.";
+        $trigger_scroll_lbl = "Deep Scroll Trigger (>75%) - Opens the chat when the user scrolls past 75% of the page.";
+        $trigger_exit_lbl = "Exit Intent Trigger - Opens the chat with a 10% discount offer when the user is about to leave.";
+        $triggers_desc = "Enable or disable individual sales-driving triggers. All triggers are deactivated by default.";
     }
 
     $client_slug = get_option('axgaists_slug', '');
@@ -237,6 +258,25 @@ function axgaists_options_page() {
                             <td>
                                 <input type="color" name="axgaists_color_theme" value="<?php echo esc_attr( get_option('axgaists_color_theme', '#10b981') ); ?>" />
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $color_desc ); ?></p>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $triggers_title ); ?></th>
+                            <td>
+                                <label style="display: block; margin-bottom: 10px; font-size: 13px;">
+                                    <input type="checkbox" name="axgaists_trigger_inactivity" value="1" <?php checked( 1, get_option('axgaists_trigger_inactivity', 0) ); ?> style="margin-right: 8px;" />
+                                    <?php echo esc_html( $trigger_inactivity_lbl ); ?>
+                                </label>
+                                <label style="display: block; margin-bottom: 10px; font-size: 13px;">
+                                    <input type="checkbox" name="axgaists_trigger_scroll" value="1" <?php checked( 1, get_option('axgaists_trigger_scroll', 0) ); ?> style="margin-right: 8px;" />
+                                    <?php echo esc_html( $trigger_scroll_lbl ); ?>
+                                </label>
+                                <label style="display: block; margin-bottom: 10px; font-size: 13px;">
+                                    <input type="checkbox" name="axgaists_trigger_exit" value="1" <?php checked( 1, get_option('axgaists_trigger_exit', 0) ); ?> style="margin-right: 8px;" />
+                                    <?php echo esc_html( $trigger_exit_lbl ); ?>
+                                </label>
+                                <p class="description" style="font-size: 11px; margin-top: 10px;"><?php echo esc_html( $triggers_desc ); ?></p>
                             </td>
                         </tr>
 
@@ -553,8 +593,8 @@ function axgaists_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.3' );
-    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.3', true );
+    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.4' );
+    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.4', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
@@ -579,7 +619,10 @@ function axgaists_enqueue_assets() {
         'color_theme'   => esc_js( get_option('axgaists_color_theme', '#10b981') ),
         'slug'          => esc_js( get_option('axgaists_slug', '') ),
         'contact_email' => esc_js( get_option('axgaists_contact_email', 'hej@axelsson.graphics') ),
-        'cur_product'   => $current_product_info
+        'cur_product'   => $current_product_info,
+        'trigger_inactivity' => (int) get_option('axgaists_trigger_inactivity', 0),
+        'trigger_scroll'     => (int) get_option('axgaists_trigger_scroll', 0),
+        'trigger_exit'       => (int) get_option('axgaists_trigger_exit', 0)
     ));
 }
 
