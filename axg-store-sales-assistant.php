@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgaists_chat]
- * Version: 1.1.4
+ * Version: 1.1.5
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -593,8 +593,8 @@ function axgaists_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.4' );
-    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.4', true );
+    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.5' );
+    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.5', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';

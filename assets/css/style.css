@@ -153,12 +153,24 @@
     border-radius: 4px;
 }
 
-/* Mobile Responsiveness */
+/* Mobile Responsiveness - Full screen Native App Takeover */
 @media screen and (max-width: 480px) {
+    #ax-woo-chat-wrapper {
+        bottom: 15px;
+        right: 15px;
+    }
+
     #ax-woo-chat-box {
-        width: calc(100vw - 32px);
-        height: calc(100vh - 120px);
-        bottom: 75px;
+        position: fixed;
+        top: 0;
+        left: 0;
         right: 0;
+        bottom: 0;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: -webkit-fill-available !important; /* Solves iOS Safari address bar and keyboard viewport height bugs */
+        border-radius: 0 !important;
+        border: none !important;
+        z-index: 99999999;
     }
 }
