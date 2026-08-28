@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgaists_chat]
- * Version: 1.1.5
+ * Version: 1.1.10
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -43,6 +43,14 @@ function axgaists_activate_plugin() {
 // --- Step 2: Register Settings & Admin Menu ---
 add_action( 'admin_menu', 'axgaists_add_admin_menu' );
 add_action( 'admin_init', 'axgaists_settings_init' );
+add_action( 'admin_enqueue_scripts', 'axgaists_admin_enqueue_scripts' );
+
+function axgaists_admin_enqueue_scripts( $hook ) {
+    if ( strpos( $hook, 'axg-store-sales-assistant' ) === false ) {
+        return;
+    }
+    wp_enqueue_media();
+}
 
 function axgaists_add_admin_menu() {
     add_menu_page(
@@ -81,10 +89,17 @@ function axgaists_settings_init() {
     register_setting( 'axgaists_settings_group', 'axgaists_chat_title', array( 'sanitize_callback' => 'sanitize_text_field' ) );
     register_setting( 'axgaists_settings_group', 'axgaists_color_theme', array( 'sanitize_callback' => 'sanitize_hex_color' ) );
     register_setting( 'axgaists_settings_group', 'axgaists_contact_email', array( 'sanitize_callback' => 'sanitize_email' ) );
+    register_setting( 'axgaists_settings_group', 'axgaists_avatar_url', array( 'sanitize_callback' => 'esc_url_raw' ) ); // Customizable chatbot avatar!
+    register_setting( 'axgaists_settings_group', 'axgaists_header_image_url', array( 'sanitize_callback' => 'esc_url_raw' ) ); // Customizable chatbot header background!
     register_setting( 'axgaists_settings_group', 'axgaists_persona', array( 'sanitize_callback' => 'sanitize_textarea_field' ) );
     register_setting( 'axgaists_settings_group', 'axgaists_trigger_inactivity', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
     register_setting( 'axgaists_settings_group', 'axgaists_trigger_scroll', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
     register_setting( 'axgaists_settings_group', 'axgaists_trigger_exit', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
+    register_setting( 'axgaists_settings_group', 'axgaists_quick_question_1', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgaists_settings_group', 'axgaists_quick_question_2', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgaists_settings_group', 'axgaists_quick_question_3', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgaists_settings_group', 'axgaists_contact_info', array( 'sanitize_callback' => 'sanitize_textarea_field' ) );
+    register_setting( 'axgaists_settings_group', 'axgaists_opening_hours', array( 'sanitize_callback' => 'sanitize_textarea_field' ) );
 }
 
 // --- Step 3: Admin Options Page ---
@@ -100,8 +115,25 @@ function axgaists_options_page() {
     $slug_desc = "Your customized client slug (delivers custom storefront grounding text).";
     $lang_desc = "The primary language your chatbot speaks and understands.";
     $title_desc = "The header title shown at the top of the open chat window.";
+    $avatar_lbl = "Avatar Icon URL";
+    $avatar_desc = "Optional URL for a custom transparent chatbot avatar icon (recommended size 40x40px PNG or SVG).";
     $color_desc = "The accent theme color of your floating chat widget.";
     $email_desc = "The email address your chatbot will provide if it cannot find an answer.";
+    
+    // Common Questions, Contact Info, Opening Hours Variables (English)
+    $quick_questions_lbl = "Common Questions (Top Buttons)";
+    $quick_questions_desc = "Configure up to three common questions. They will appear as quick-click buttons at the top of the chat logs to guide your visitors.";
+    $quick_q_placeholder1 = "e.g., What are your shipping times?";
+    $quick_q_placeholder2 = "e.g., Do you offer a warranty?";
+    $quick_q_placeholder3 = "e.g., How can I track my order?";
+    
+    $contact_info_lbl = "Contact Information";
+    $contact_info_desc = "Add contact details (phone number, address, etc.). This will be fed directly to the AI and shown if visitors ask for contact info.";
+    $contact_info_placeholder = "e.g., Phone: +46 8 123 45 67\nAddress: Sveavägen 12, Stockholm";
+    
+    $opening_hours_lbl = "Opening Hours";
+    $opening_hours_desc = "Enter your shop's opening hours. The AI will use this to answer questions about when you are open.";
+    $opening_hours_placeholder = "e.g., Weekdays: 10:00 - 18:00\nSaturdays: 11:00 - 15:00\nSundays: Closed";
     $persona_desc = "Describe your chatbot's persona and store instructions. For example: 'You are a warm, professional fashion consultant for our apparel store. Guide the customer to choose the best style and upsell matching accessories!'";
 
     $triggers_title = "Proactive Sales Triggers";
@@ -132,8 +164,28 @@ function axgaists_options_page() {
         $slug_desc = "Ditt anpassade slug-namn för att hämta butikens information direkt.";
         $lang_desc = "Språket som din e-handelsbot pratar och förstår.";
         $title_desc = "Rubriken som visas längst upp i det öppna chattfönstret.";
+        $avatar_lbl = "Avatar-bild URL";
+        $avatar_desc = "Valfri URL för en anpassad transparent profilbild för chattboten (rekommenderad storlek 40x40px PNG eller SVG).";
+        $header_image_lbl = "Header-bakgrundsbild URL";
+        $header_image_desc = "Valfri URL för en anpassad bakgrundsbild i chatfönstrets header (rekommenderas t.ex. en logotyp eller en snygg mönsterbild, t.ex. 370x60px).";
+        $choose_image_btn = "Välj bild";
         $color_desc = "Färgen på din flytande chattbubbla, skicka-knappen samt användarens meddelanden.";
         $email_desc = "E-postadress som boten ber besökaren kontakta vid specifika kundtjänstfrågor.";
+        
+        // Common Questions, Contact Info, Opening Hours Variables (Swedish)
+        $quick_questions_lbl = "Vanliga frågor (Snabbknappar)";
+        $quick_questions_desc = "Fyll i upp till tre vanliga frågor. De kommer att visas som klickbara snabbknappar längst upp i chatten för att hjälpa dina besökare.";
+        $quick_q_placeholder1 = "t.ex. Vad har ni för leveranstider?";
+        $quick_q_placeholder2 = "t.ex. Erbjuder ni garanti?";
+        $quick_q_placeholder3 = "t.ex. Hur spårar jag min order?";
+        
+        $contact_info_lbl = "Kontaktuppgifter";
+        $contact_info_desc = "Ange dina kontaktuppgifter (telefonnummer, adress, osv.). Dessa matas direkt till AI-modellen och visas när kunder frågar efter kontaktuppgifter.";
+        $contact_info_placeholder = "t.ex. Tel: 08-123 45 67\nAdress: Sveavägen 12, Stockholm";
+        
+        $opening_hours_lbl = "Öppettider";
+        $opening_hours_desc = "Ange dina öppettider. AI-modellen använder detta för att svara på frågor om när butiken har öppet.";
+        $opening_hours_placeholder = "t.ex. Vardagar: 10:00 - 18:00\nLördagar: 11:00 - 15:00\nSöndagar: Stängt";
         $persona_desc = "Beskriv bottens roll och säljinstruktioner. Exempel: 'Du är en engagerad och kunnig säljare för vår sportbutik. Tipsa snyggt om passande kläder och föreslå merförsäljning av tillbehör!'";
 
         $triggers_title = "Proaktiva Sälj-triggers";
@@ -157,8 +209,28 @@ function axgaists_options_page() {
         $slug_desc = "Your customized client slug name to retrieve store assets.";
         $lang_desc = "The primary language your chatbot speaks and understands.";
         $title_desc = "The header title shown at the top of the chat widget.";
+        $avatar_lbl = "Avatar Icon URL";
+        $avatar_desc = "Optional URL for a custom transparent chatbot avatar icon (recommended size 40x40px PNG or SVG).";
+        $header_image_lbl = "Header Background Image URL";
+        $header_image_desc = "Optional URL for a custom background image in the chat window header (recommended banner/pattern size e.g. 370x60px).";
+        $choose_image_btn = "Choose Image";
         $color_desc = "The accent theme color of your floating chat widget.";
         $email_desc = "The email address your chatbot will provide if it cannot find an answer.";
+        
+        // Common Questions, Contact Info, Opening Hours Variables (Fallback)
+        $quick_questions_lbl = "Common Questions (Top Buttons)";
+        $quick_questions_desc = "Configure up to three common questions. They will appear as quick-click buttons at the top of the chat logs to guide your visitors.";
+        $quick_q_placeholder1 = "e.g., What are your shipping times?";
+        $quick_q_placeholder2 = "e.g., Do you offer a warranty?";
+        $quick_q_placeholder3 = "e.g., How can I track my order?";
+        
+        $contact_info_lbl = "Contact Information";
+        $contact_info_desc = "Add contact details (phone number, address, etc.). This will be fed directly to the AI and shown if visitors ask for contact info.";
+        $contact_info_placeholder = "e.g., Phone: +46 8 123 45 67\nAddress: Sveavägen 12, Stockholm";
+        
+        $opening_hours_lbl = "Opening Hours";
+        $opening_hours_desc = "Enter your shop's opening hours. The AI will use this to answer questions about when you are open.";
+        $opening_hours_placeholder = "e.g., Weekdays: 10:00 - 18:00\nSaturdays: 11:00 - 15:00\nSundays: Closed";
         $persona_desc = "Describe your chatbot's persona and store instructions. For example: 'You are a warm, professional fashion consultant for our apparel store. Guide the customer to choose the best style and upsell matching accessories!'";
 
         $triggers_title = "Proactive Sales Triggers";
@@ -224,6 +296,34 @@ function axgaists_options_page() {
                         </tr>
 
                         <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $quick_questions_lbl ); ?></th>
+                            <td>
+                                <div style="display: flex; flex-direction: column; gap: 8px; max-width: 450px;">
+                                    <input type="text" name="axgaists_quick_question_1" value="<?php echo esc_attr( get_option('axgaists_quick_question_1', '') ); ?>" placeholder="<?php echo esc_attr( $quick_q_placeholder1 ); ?>" style="width: 100%;" />
+                                    <input type="text" name="axgaists_quick_question_2" value="<?php echo esc_attr( get_option('axgaists_quick_question_2', '') ); ?>" placeholder="<?php echo esc_attr( $quick_q_placeholder2 ); ?>" style="width: 100%;" />
+                                    <input type="text" name="axgaists_quick_question_3" value="<?php echo esc_attr( get_option('axgaists_quick_question_3', '') ); ?>" placeholder="<?php echo esc_attr( $quick_q_placeholder3 ); ?>" style="width: 100%;" />
+                                </div>
+                                <p class="description" style="font-size: 11px; margin-top: 5px;"><?php echo esc_html( $quick_questions_desc ); ?></p>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $contact_info_lbl ); ?></th>
+                            <td>
+                                <textarea name="axgaists_contact_info" rows="3" style="width: 100%; max-width: 450px; font-family: monospace;" placeholder="<?php echo esc_attr( $contact_info_placeholder ); ?>"><?php echo esc_textarea( get_option('axgaists_contact_info', '') ); ?></textarea>
+                                <p class="description" style="font-size: 11px;"><?php echo esc_html( $contact_info_desc ); ?></p>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $opening_hours_lbl ); ?></th>
+                            <td>
+                                <textarea name="axgaists_opening_hours" rows="3" style="width: 100%; max-width: 450px; font-family: monospace;" placeholder="<?php echo esc_attr( $opening_hours_placeholder ); ?>"><?php echo esc_textarea( get_option('axgaists_opening_hours', '') ); ?></textarea>
+                                <p class="description" style="font-size: 11px;"><?php echo esc_html( $opening_hours_desc ); ?></p>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
                             <th scope="row" style="width: 150px; font-weight: bold;">Language</th>
                             <td>
                                 <select name="axgaists_language" style="width: 100%; max-width: 200px;">
@@ -250,6 +350,28 @@ function axgaists_options_page() {
                             <td>
                                 <input type="text" name="axgaists_chat_title" value="<?php echo esc_attr( get_option('axgaists_chat_title', 'AI Store Assistant') ); ?>" class="regular-text" style="width: 100%; max-width: 450px;" />
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $title_desc ); ?></p>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $avatar_lbl ); ?></th>
+                            <td>
+                                <div style="display: flex; gap: 8px; align-items: center; max-width: 580px; margin-bottom: 5px;">
+                                    <input type="text" name="axgaists_avatar_url" id="axgaists_avatar_url" value="<?php echo esc_url( get_option('axgaists_avatar_url') ); ?>" class="regular-text" style="flex: 1;" placeholder="e.g. https://domain.com/avatar.png" />
+                                    <button type="button" class="button axgaists-media-upload-button" data-target="axgaists_avatar_url" style="white-space: nowrap;"><?php echo esc_html( $choose_image_btn ); ?></button>
+                                </div>
+                                <p class="description" style="font-size: 11px;"><?php echo esc_html( $avatar_desc ); ?></p>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $header_image_lbl ); ?></th>
+                            <td>
+                                <div style="display: flex; gap: 8px; align-items: center; max-width: 580px; margin-bottom: 5px;">
+                                    <input type="text" name="axgaists_header_image_url" id="axgaists_header_image_url" value="<?php echo esc_url( get_option('axgaists_header_image_url') ); ?>" class="regular-text" style="flex: 1;" placeholder="e.g. https://domain.com/header-bg.png" />
+                                    <button type="button" class="button axgaists-media-upload-button" data-target="axgaists_header_image_url" style="white-space: nowrap;"><?php echo esc_html( $choose_image_btn ); ?></button>
+                                </div>
+                                <p class="description" style="font-size: 11px;"><?php echo esc_html( $header_image_desc ); ?></p>
                             </td>
                         </tr>
 
@@ -367,6 +489,33 @@ function axgaists_options_page() {
             </div>
         </div>
     </div>
+    
+    <!-- WordPress Media Library Frame Uploader Script -->
+    <script>
+    jQuery(document).ready(function($){
+        $('.axgaists-media-upload-button').click(function(e) {
+            e.preventDefault();
+            var button = $(this);
+            var target_id = button.data('target');
+            var input_field = $('#' + target_id);
+            
+            var file_frame = wp.media.frames.file_frame = wp.media({
+                title: 'Select or Upload Image',
+                button: {
+                    text: 'Use this image'
+                },
+                multiple: false
+            });
+            
+            file_frame.on('select', function() {
+                var attachment = file_frame.state().get('selection').first().toJSON();
+                input_field.val(attachment.url);
+            });
+            
+            file_frame.open();
+        });
+    });
+    </script>
     <?php
 }
 
@@ -433,7 +582,7 @@ function axgaists_insights_page() {
                 'slug'          => $slug
             ) ),
             'timeout'   => 30,
-            'sslverify' => false, // Bulletproof compatibility for local hosts and servers with outdated certificates
+            'sslverify' => true, // Secure certificate verification in production
         ) );
 
         if ( is_wp_error( $response ) ) {
@@ -593,8 +742,8 @@ function axgaists_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.5' );
-    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.5', true );
+    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.10' );
+    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.10', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
@@ -619,6 +768,8 @@ function axgaists_enqueue_assets() {
         'color_theme'   => esc_js( get_option('axgaists_color_theme', '#10b981') ),
         'slug'          => esc_js( get_option('axgaists_slug', '') ),
         'contact_email' => esc_js( get_option('axgaists_contact_email', 'hej@axelsson.graphics') ),
+        'contact_info'  => esc_js( get_option('axgaists_contact_info', '') ), // Pass custom contact info!
+        'opening_hours' => esc_js( get_option('axgaists_opening_hours', '') ), // Pass opening hours!
         'cur_product'   => $current_product_info,
         'trigger_inactivity' => (int) get_option('axgaists_trigger_inactivity', 0),
         'trigger_scroll'     => (int) get_option('axgaists_trigger_scroll', 0),
@@ -638,6 +789,7 @@ function axgaists_inject_widget() {
     $chat_title = esc_html( get_option('axgaists_chat_title', 'AI Store Assistant') );
     $color_theme = esc_attr( get_option('axgaists_color_theme', '#10b981') );
     $language = esc_attr( get_option('axgaists_language', 'en') );
+    $avatar_url = esc_url( get_option('axgaists_avatar_url', '') );
 
     // Dictionary of native multilingual support
     $dictionary = array(
@@ -660,6 +812,11 @@ function axgaists_inject_widget() {
     $greetings = $lang_pack['greeting'];
     $placeholder = $lang_pack['placeholder'];
     $send_text = $lang_pack['send'];
+    
+    $header_style = "background-color: " . esc_attr( $color_theme ) . ";";
+    if ( ! empty( $header_image_url ) ) {
+        $header_style .= " background-image: url(" . esc_url( $header_image_url ) . "); background-size: cover; background-position: center;";
+    }
     ?>
     <div id="ax-woo-chat-wrapper">
         <div id="ax-woo-chat-toggle" style="background-color: <?php echo esc_attr( $color_theme ); ?>;" onclick="axWooToggleChat()">
@@ -668,12 +825,35 @@ function axgaists_inject_widget() {
             </svg>
         </div>
         <div id="ax-woo-chat-box">
-            <div id="ax-woo-chat-head" style="background-color: <?php echo esc_attr( $color_theme ); ?>;">
-                <span><?php echo esc_html( $chat_title ); ?></span>
+            <div id="ax-woo-chat-head" style="<?php echo esc_attr( $header_style ); ?>">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <?php if ( ! empty( $avatar_url ) ) : ?>
+                        <img src="<?php echo esc_url( $avatar_url ); ?>" id="ax-woo-chat-avatar" style="width: 28px; height: 28px; border-radius: 50%; object-fit: contain; background: transparent; display: block;" />
+                    <?php endif; ?>
+                    <span id="ax-woo-chat-title"><?php echo esc_html( $chat_title ); ?></span>
+                </div>
                 <span id="ax-woo-chat-close" onclick="axWooToggleChat()">&times;</span>
             </div>
             <div id="ax-woo-chat-logs">
                 <div class="ax-woo-msg ax-woo-bot"><?php echo esc_html( $greetings ); ?></div>
+                <?php
+                $q1 = get_option('axgaists_quick_question_1');
+                $q2 = get_option('axgaists_quick_question_2');
+                $q3 = get_option('axgaists_quick_question_3');
+                if ( ! empty( $q1 ) || ! empty( $q2 ) || ! empty( $q3 ) ) :
+                ?>
+                <div class="ax-quick-questions-container" style="display: flex; flex-direction: column; gap: 8px; margin: 10px 12px; align-items: flex-start;">
+                    <?php if ( ! empty( $q1 ) ) : ?>
+                        <button class="ax-quick-question-btn" onclick="axWooSendQuickQuestion(this)" style="background: rgba(255, 255, 255, 0.9); border: 1px solid <?php echo esc_attr( $color_theme ); ?>44; border-radius: 16px; padding: 6px 12px; font-size: 11px; color: #334155; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; max-width: 90%; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-weight: 500;"><?php echo esc_html( $q1 ); ?></button>
+                    <?php endif; ?>
+                    <?php if ( ! empty( $q2 ) ) : ?>
+                        <button class="ax-quick-question-btn" onclick="axWooSendQuickQuestion(this)" style="background: rgba(255, 255, 255, 0.9); border: 1px solid <?php echo esc_attr( $color_theme ); ?>44; border-radius: 16px; padding: 6px 12px; font-size: 11px; color: #334155; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; max-width: 90%; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-weight: 500;"><?php echo esc_html( $q2 ); ?></button>
+                    <?php endif; ?>
+                    <?php if ( ! empty( $q3 ) ) : ?>
+                        <button class="ax-quick-question-btn" onclick="axWooSendQuickQuestion(this)" style="background: rgba(255, 255, 255, 0.9); border: 1px solid <?php echo esc_attr( $color_theme ); ?>44; border-radius: 16px; padding: 6px 12px; font-size: 11px; color: #334155; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; max-width: 90%; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-weight: 500;"><?php echo esc_html( $q3 ); ?></button>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
             </div>
             <div id="ax-woo-chat-branding" style="display: none; text-align: center; padding: 5px 10px; font-size: 11px; background-color: #f8fafc; border-top: 1px solid #eaeaea; color: #64748b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;">
                 Powered by <a href="https://axelsson.graphics" target="_blank" style="color: <?php echo esc_attr( $color_theme ); ?>; font-weight: bold; text-decoration: none;" rel="noopener noreferrer">Axelsson Graphics</a>
@@ -912,6 +1092,10 @@ function axgaists_handle_chat_message() {
     // 3. Assemble Bot Persona & Instructions
     $persona = get_option('axgaists_persona', 'You are a warm, professional WooCommerce sales and customer support assistant. Help visitors find the best products, explain shipping, freight, and return policies, and assist with general store FAQs.');
     
+    // Retrieve custom contact info and opening hours directly from DB for maximum security & efficiency!
+    $contact_info = get_option('axgaists_contact_info', '');
+    $opening_hours = get_option('axgaists_opening_hours', '');
+
     // Check if user is currently looking at a product to give Gemini contextual guidance
     $viewing_context = "";
     if ( $viewing_product ) {
@@ -930,13 +1114,15 @@ function axgaists_handle_chat_message() {
             'language'       => $language,
             'slug'           => $slug,
             'contact_email'  => $contact_email,
+            'contact_info'   => $contact_info,
+            'opening_hours'  => $opening_hours,
             'is_woocommerce' => true,
             'persona'        => $persona,
             'viewing_product'=> $viewing_product,
             'catalog_text'   => $catalog_text
         ) ),
         'timeout'   => 20,
-        'sslverify' => false, // Ensure local hosts/outdated CA bundles connect bulletproofly
+        'sslverify' => true, // Ensure secure connections in production
     ) );
 
     if ( is_wp_error( $response ) ) {

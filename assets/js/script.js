@@ -12,6 +12,7 @@ if (!axWooSid) {
 
 function axWooTriggerProactive(message) {
     const box = document.getElementById('ax-woo-chat-box');
+    const wrapper = document.getElementById('ax-woo-chat-wrapper');
     if (!box) return;
     
     // Check if chat is already open or already has messages to avoid interrupting
@@ -21,6 +22,13 @@ function axWooTriggerProactive(message) {
 
     // Open chat box
     box.style.display = 'flex';
+    if (window.innerWidth <= 480) {
+        document.body.classList.add('ax-no-scroll');
+        if (wrapper) wrapper.classList.add('ax-active');
+        if (window.visualViewport) {
+            axWooAdjustViewport();
+        }
+    }
     const input = document.getElementById('ax-woo-chat-input');
     if (input) input.focus();
 
@@ -30,6 +38,12 @@ function axWooTriggerProactive(message) {
 
 // 2. Initialize and Restore Chat History on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
+    // Register Visual Viewport resize handlers for mobile virtual keyboards
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', axWooAdjustViewport);
+        window.visualViewport.addEventListener('scroll', axWooAdjustViewport);
+    }
+
     // Check premium state from localStorage and toggle branding
     const isPremium = localStorage.getItem('ax_woo_is_premium') === '1';
     const branding = document.getElementById('ax-woo-chat-branding');
@@ -52,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const lang = axgaists_settings.language || 'en';
 
     // A. Inactivity Trigger (45 seconds)
-    if (axgaists_settings.trigger_inactivity === 1) {
+    if (parseInt(axgaists_settings.trigger_inactivity, 10) === 1) {
         let inactivityTimer;
         let inactivity_greeting = "Hello! Do you need help finding anything today? Feel free to ask!";
         if (lang === 'sv') {
@@ -77,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // B. Deep Scroll Trigger (>75%)
-    if (axgaists_settings.trigger_scroll === 1) {
+    if (parseInt(axgaists_settings.trigger_scroll, 10) === 1) {
         let scroll_greeting = "It looks like you're reading up! Let me know if you have any questions about our products, shipping, or returns.";
         if (lang === 'sv') {
             scroll_greeting = "Det ser ut som att du läser på! Säg till om du har några funderingar kring våra produkter, frakt eller villkor.";
@@ -96,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // C. Exit Intent Trigger
-    if (axgaists_settings.trigger_exit === 1) {
+    if (parseInt(axgaists_settings.trigger_exit, 10) === 1) {
         let exit_greeting = "Wait! Did you know you can get 10% off your first order? Ask me for a discount code and I'll hook you up!";
         if (lang === 'sv') {
             exit_greeting = "Vänta lite! Visste du att du kan få 10% rabatt på din beställning? Fråga mig om en rabattkod så fixar jag det!";
@@ -114,15 +128,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function axWooAdjustViewport() {
+    const box = document.getElementById('ax-woo-chat-box');
+    if (box && box.style.display === 'flex' && window.innerWidth <= 480) {
+        const vv = window.visualViewport;
+        box.style.height = vv.height + 'px';
+        box.style.top = vv.offsetTop + 'px';
+        
+        const logs = document.getElementById('ax-woo-chat-logs');
+        if (logs) {
+            logs.scrollTop = logs.scrollHeight;
+        }
+    }
+}
+
 function axWooToggleChat() {
     const box = document.getElementById('ax-woo-chat-box');
+    const wrapper = document.getElementById('ax-woo-chat-wrapper');
     if (!box) return;
     
-    box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+    const isOpening = box.style.display === 'none' || box.style.display === '';
     
-    if (box.style.display === 'flex') {
-        const input = document.getElementById('ax-woo-chat-input');
-        if (input) input.focus();
+    if (isOpening) {
+        box.style.display = 'flex';
+        if (window.innerWidth <= 480) {
+            document.body.classList.add('ax-no-scroll');
+            if (wrapper) wrapper.classList.add('ax-active');
+            setTimeout(() => {
+                const input = document.getElementById('ax-woo-chat-input');
+                if (input) input.focus();
+                if (window.visualViewport) {
+                    axWooAdjustViewport();
+                }
+            }, 100);
+        } else {
+            const input = document.getElementById('ax-woo-chat-input');
+            if (input) input.focus();
+        }
         
         // Check if we already have this product greeting in our active history to avoid double greetings
         const history = JSON.parse(sessionStorage.getItem('ax_woo_chat_history') || '[]');
@@ -145,7 +187,7 @@ function axWooToggleChat() {
             } else if (axgaists_settings.language === 'pl') {
                 contextual_msg = `Widzę, że patrzysz na "${p.title}" (${p.price}). Jak mogę pomóc Ci w wyborze tego produktu?`;
             } else if (axgaists_settings.language === 'it') {
-                contextual_msg = `Vedo que stai guardando "${p.title}" (${p.price}). Come posso aiutarti con questo prodotto?`;
+                contextual_msg = `Vedo que stai guardando "${p.title}" (${p.price}). Come posso aiutarti con questo produkt?`;
             } else if (axgaists_settings.language === 'nl') {
                 contextual_msg = `Ik zie dat je kijkt naar "${p.title}" (${p.price}). Hoe kan ik je helpen met dit product?`;
             } else if (axgaists_settings.language === 'pt') {
@@ -157,13 +199,30 @@ function axWooToggleChat() {
             } else if (axgaists_settings.language === 'fa') {
                 contextual_msg = `من متوجه شدم که شما در حال مشاهده محصول "${p.title}" (${p.price}) هستید. چطور می‌توانم در مورد این محصول به شما کمک کنم؟`;
             } else if (axgaists_settings.language === 'ar') {
-                contextual_msg = `أرى أنك تبحث في "${p.title}" (${p.price}). كيف يمكنني مساعدتك في هذا المنتج؟`;
+                contextual_msg = `أرى أنك تبحث في "${p.title}" (${p.price}). كيف يمكنني مساعدتك في هذا المنتج?`;
             }
             
             setTimeout(() => {
                 axWooAppend(contextual_msg, 'bot');
             }, 600);
         }
+    } else {
+        box.style.display = 'none';
+        if (window.innerWidth <= 480) {
+            document.body.classList.remove('ax-no-scroll');
+            if (wrapper) wrapper.classList.remove('ax-active');
+            box.style.height = '';
+            box.style.top = '';
+        }
+    }
+}
+
+function axWooSendQuickQuestion(btn) {
+    const questionText = btn.textContent || btn.innerText;
+    const input = document.getElementById('ax-woo-chat-input');
+    if (input) {
+        input.value = questionText;
+        axWooSendMessage();
     }
 }
 

@@ -3,7 +3,7 @@ Contributors: mathiasax
 Tags: woocommerce, chatbot, ai assistant, product recommendations, gemini
 Requires at least: 5.0
 Tested up to: 7.0.3
-Stable tag: 1.1.4
+Stable tag: 1.1.10
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -58,6 +58,33 @@ Yes, this plugin is specifically engineered for WooCommerce stores to retrieve a
 Absolutely! The plugin has native, built-in support for 13 global languages. Simply select your desired language in the admin configuration panel and the chat bubble will translate seamlessly.
 
 == Changelog ==
+
+= 1.1.10 =
+*   Feature: Added support for three suggested quick questions (Vanliga frågor) appearing as interactive click-to-ask buttons at the top of the chat widget.
+*   Feature: Added customizable Contact Information (Kontaktuppgifter) and Opening Hours (Öppettider) settings inside the WooCommerce admin options panel, dynamically fed securely into the AI's real-time knowledge base on the backend.
+*   Enhancement: Aligned plugin and asset versions to 1.1.10 for instant browser cache-busting.
+
+= 1.1.9 =
+*   Enhancement: Rebuilt the mobile layout to provide a beautiful, native-like full-screen overlay experience on devices under 480px.
+*   Enhancement: Solved the asymmetric 7px-vs-25px margin misalignment and iOS/Android viewport keyboard-clipping bugs.
+*   Enhancement: Upgraded close button tap size with comfortable touch padding.
+*   Enhancement: Aligned plugin and asset versions to 1.1.9 for instant cache-busting.
+
+= 1.1.8 =
+*   Feature: Integrated the native WordPress Media Library uploader directly into the admin options panel! Merchants can now click "Choose Image" next to both the Chatbot Avatar and Header Background Image fields to select or upload images securely and visually from their media library, rather than manually copying and pasting URLs.
+*   Enhancement: Aligned plugin and asset versions to 1.1.8 for instant cache-busting.
+
+= 1.1.7 =
+*   Feature: Added customizable header background image support! Merchants can now customize the header of the chat window with a custom banner/pattern URL, providing seamless and professional brand integration.
+*   Enhancement: Aligned plugin and asset versions to 1.1.7 for instant cache-busting.
+
+= 1.1.6 =
+*   Bug Fix: Parsed localized Proactive Sales Trigger settings to integers in frontend JS. This resolves type mismatch issues caused by wp_localize_script() natively serializing numeric options to strings, ensuring Inactivity, Scroll Depth, and Exit Intent triggers fire reliably on user interaction.
+*   Enhancement: Aligned plugin and asset versions to 1.1.6 for instant cache-busting.
+
+= 1.1.5 =
+*   Feature: Added customizable chatbot avatar icon support (Avatar Icon URL setting) allowing merchants to configure their own transparent logo/icon.
+*   Enhancement: Aligned plugin and asset versions to 1.1.5 for instant cache-busting.
 
 = 1.1.4 =
 *   Fix: Restored and corrected premium subscription payment links in the back-office dashboard cards to point directly to your live Stripe Checkout pages.
