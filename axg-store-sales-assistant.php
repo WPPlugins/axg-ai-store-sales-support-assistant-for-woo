@@ -495,6 +495,18 @@ function axgaists_options_page() {
                         <a href="<?php echo esc_url( $gold_tracking_url ); ?>" target="_blank" style="margin-top: 15px; display: block; background-color: #a78bfa; color: #0f172a; text-decoration: none; font-weight: bold; padding: 12px 15px; border-radius: 6px; font-size: 13px; text-align: center; box-shadow: 0 2px 5px rgba(167,139,250,0.1); transition: opacity 0.2s;"><?php echo esc_html( $gold_btn ); ?></a>
                     </div>
                 </div>
+
+                <!-- Legal disclaimer below cards -->
+                <p style="text-align: center; font-size: 11px; color: #cbd5e1; margin-top: 25px; margin-bottom: 0; line-height: 1.5; max-width: 700px; margin-left: auto; margin-right: auto;">
+                    <?php if ($language === 'sv') : ?>
+                        Genom att uppgradera godkänner du våra <a href="https://axelsson.graphics/terms" target="_blank" style="color: #38bdf8; text-decoration: underline;">Användarvillkor</a> och vår krocksäkra <a href="https://axelsson.graphics/terms" target="_blank" style="color: #38bdf8; text-decoration: underline;">Fair Use Policy</a>. Vi stänger aldrig av din bot automatiskt vid tillfälliga trafiktoppar.
+                    <?php elseif ($language === 'de') : ?>
+                        Mit dem Upgrade akzeptieren Sie unsere <a href="https://axelsson.graphics/terms" target="_blank" style="color: #38bdf8; text-decoration: underline;">Nutzungsbedingungen</a> und unsere <a href="https://axelsson.graphics/terms" target="_blank" style="color: #38bdf8; text-decoration: underline;">Fair Use Policy</a>. Wir schalten Ihren Bot bei vorübergehenden Datenverkehrsspitzen nicht automatisch ab.
+                    <?php else : ?>
+                        By upgrading, you agree to our <a href="https://axelsson.graphics/terms" target="_blank" style="color: #38bdf8; text-decoration: underline;">Terms of Use</a> and our crash-proof <a href="https://axelsson.graphics/terms" target="_blank" style="color: #38bdf8; text-decoration: underline;">Fair Use Policy</a>. We never automatically disable your bot during temporary traffic spikes.
+                    <?php endif; ?>
+                </p>
+
             </div>
         </div>
     </div>
