@@ -3,7 +3,7 @@ Contributors: mathiasax
 Tags: woocommerce, chatbot, ai assistant, product recommendations, gemini
 Requires at least: 5.0
 Tested up to: 7.0.3
-Stable tag: 1.1.10
+Stable tag: 1.1.11
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -58,6 +58,10 @@ Yes, this plugin is specifically engineered for WooCommerce stores to retrieve a
 Absolutely! The plugin has native, built-in support for 13 global languages. Simply select your desired language in the admin configuration panel and the chat bubble will translate seamlessly.
 
 == Changelog ==
+
+= 1.1.11 =
+*   Enhancement: Updated the free/trial chatbot branding link inside the WooCommerce widget footer from 'Powered by Axelsson Graphics' to 'Powered by AxG AI' for a cleaner and more focused branding experience.
+*   Enhancement: Aligned plugin and asset versions to 1.1.11 for instant browser cache-busting.
 
 = 1.1.10 =
 *   Feature: Added support for three suggested quick questions (Vanliga frågor) appearing as interactive click-to-ask buttons at the top of the chat widget.

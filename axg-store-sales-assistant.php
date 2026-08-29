@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgaists_chat]
- * Version: 1.1.10
+ * Version: 1.1.11
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -742,8 +742,8 @@ function axgaists_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.10' );
-    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.10', true );
+    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.11' );
+    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.11', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
@@ -856,7 +856,7 @@ function axgaists_inject_widget() {
                 <?php endif; ?>
             </div>
             <div id="ax-woo-chat-branding" style="display: none; text-align: center; padding: 5px 10px; font-size: 11px; background-color: #f8fafc; border-top: 1px solid #eaeaea; color: #64748b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;">
-                Powered by <a href="https://axelsson.graphics" target="_blank" style="color: <?php echo esc_attr( $color_theme ); ?>; font-weight: bold; text-decoration: none;" rel="noopener noreferrer">Axelsson Graphics</a>
+                Powered by <a href="https://axelsson.graphics" target="_blank" style="color: <?php echo esc_attr( $color_theme ); ?>; font-weight: bold; text-decoration: none;" rel="noopener noreferrer">AxG AI</a>
             </div>
             <div id="ax-woo-chat-input-row">
                 <input type="text" id="ax-woo-chat-input" placeholder="<?php echo esc_attr($placeholder); ?>" onkeypress="if(event.key==='Enter') axWooSendMessage()">
