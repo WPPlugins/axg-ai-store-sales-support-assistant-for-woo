@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgaists_chat]
- * Version: 1.1.12
+ * Version: 1.1.14
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -433,6 +433,7 @@ function axgaists_options_page() {
                     <!-- Starter Card -->
                     <div style="flex: 1; min-width: 260px; max-width: 320px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
+                            <img src="<?php echo esc_url( plugins_url( 'assets/images/AxG_Bronz.png', __FILE__ ) ); ?>" style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" />
                             <h4 style="margin: 0 0 5px 0; color: #10b981; font-size: 15px; font-weight: bold;"><?php echo esc_html( $bronze_title ); ?></h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
                                 <?php if ($language === 'sv') : ?>
@@ -454,6 +455,7 @@ function axgaists_options_page() {
                     <!-- Grow Card -->
                     <div style="flex: 1; min-width: 260px; max-width: 320px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
+                            <img src="<?php echo esc_url( plugins_url( 'assets/images/AxG_Silver.png', __FILE__ ) ); ?>" style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" />
                             <h4 style="margin: 0 0 5px 0; color: #38bdf8; font-size: 15px; font-weight: bold;"><?php echo esc_html( $silver_title ); ?></h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
                                 <?php if ($language === 'sv') : ?>
@@ -477,6 +479,7 @@ function axgaists_options_page() {
                     <!-- Pro Card -->
                     <div style="flex: 1; min-width: 260px; max-width: 320px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
+                            <img src="<?php echo esc_url( plugins_url( 'assets/images/AxG_Gold.png', __FILE__ ) ); ?>" style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" />
                             <h4 style="margin: 0 0 5px 0; color: #a78bfa; font-size: 15px; font-weight: bold;"><?php echo esc_html( $gold_title ); ?></h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
                                 <?php if ($language === 'sv') : ?>
@@ -763,8 +766,8 @@ function axgaists_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.12' );
-    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.12', true );
+    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.14' );
+    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.14', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
