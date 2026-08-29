@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgaists_chat]
- * Version: 1.1.15
+ * Version: 1.1.16
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -244,8 +244,8 @@ function axgaists_options_page() {
     $client_email = get_option('axgaists_contact_email', get_option('admin_email', ''));
 
     $bronze_link = "https://buy.stripe.com/28EaF0fir3cGaDIfhWfMA03";
-    $silver_link = "https://buy.stripe.com/dRm8wSdajfZs6nsedSfMA01";
-    $gold_link = "https://buy.stripe.com/cNi28u8U3cNg3bg4DifMA02";
+    $silver_link = "https://buy.stripe.com/5kQ9AW0nx3cGeTY8TyfMA04";
+    $gold_link = "https://buy.stripe.com/8x2eVg7PZ14yeTYedSfMA05";
 
     // Conditionally build tracking arguments to prevent Stripe payment link crashes on empty values!
     $stripe_args = array();
@@ -766,8 +766,8 @@ function axgaists_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.15' );
-    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.15', true );
+    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.16' );
+    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.16', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
