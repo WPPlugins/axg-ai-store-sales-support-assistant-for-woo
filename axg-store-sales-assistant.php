@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgaists_chat]
- * Version: 1.1.17
+ * Version: 1.1.18
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -143,9 +143,27 @@ function axgaists_options_page() {
     $triggers_desc = "Enable or disable individual sales-driving triggers. All triggers are deactivated by default.";
 
     // Pricing Translations
-    // Pricing Translations
     $pricing_title = "Upgrade to Premium & Boost Your Sales! 🚀💸";
     $pricing_desc = "Our intelligent AI sales assistant is ready to lift your store's conversions 24/7. Choose the plan that fits your growth!";
+    
+    // Determine currency: non-European stores / locales use USD ($), Europe uses EUR (€)
+    $wc_currency = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : '';
+    $euro_locales = array( 'sv_SE', 'de_DE', 'de_AT', 'de_CH', 'en_GB', 'en_IE', 'fr_FR', 'es_ES', 'it_IT', 'nl_NL', 'da_DK', 'fi', 'nb_NO', 'nn_NO', 'pl_PL' );
+    $euro_currencies = array( 'EUR', 'GBP', 'SEK', 'NOK', 'DKK', 'PLN', 'CHF' );
+    $is_outside_europe = ( $wc_currency === 'USD' ) || ( ! in_array( $wc_currency, $euro_currencies, true ) && ! in_array( get_locale(), $euro_locales, true ) && $language === 'en' );
+
+    if ( $is_outside_europe ) {
+        $bronze_price_tag = "$10";
+        $silver_price_tag = "$24.90";
+        $gold_price_tag   = "$49";
+        $price_period     = "/ month";
+    } else {
+        $bronze_price_tag = "10 €";
+        $silver_price_tag = "24,90 €";
+        $gold_price_tag   = "49 €";
+        $price_period     = "/ month";
+    }
+
     $bronze_title = "Starter Plan";
     $bronze_btn = "Upgrade to Starter";
     $silver_title = "Grow Plan ⭐";
@@ -196,6 +214,10 @@ function axgaists_options_page() {
 
         $pricing_title = "Uppgradera till Premium & maximera din försäljning! 🚀💸";
         $pricing_desc = "Vår intelligenta AI-säljare är redo att lyfta din butik dygnet runt. Välj det tillväxt-paket som passar din e-handel bäst!";
+        $bronze_price_tag = "10 €";
+        $silver_price_tag = "24,90 €";
+        $gold_price_tag   = "49 €";
+        $price_period     = "/ mån";
         $bronze_title = "Starter-paket";
         $bronze_btn = "Uppgradera till Starter";
         $silver_title = "Grow-paket ⭐";
@@ -434,7 +456,11 @@ function axgaists_options_page() {
                     <div style="flex: 1; min-width: 260px; max-width: 320px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
                             <img src="<?php echo esc_url( plugins_url( 'assets/images/AxG_Bronz.png', __FILE__ ) ); ?>" style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" />
-                            <h4 style="margin: 0 0 5px 0; color: #10b981; font-size: 15px; font-weight: bold;"><?php echo esc_html( $bronze_title ); ?></h4>
+                            <h4 style="margin: 0 0 4px 0; color: #10b981; font-size: 15px; font-weight: bold;"><?php echo esc_html( $bronze_title ); ?></h4>
+                            <div style="font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 12px; display: flex; align-items: baseline; gap: 4px;">
+                                <span><?php echo esc_html( $bronze_price_tag ); ?></span>
+                                <span style="font-size: 12px; font-weight: normal; color: #94a3b8;"><?php echo esc_html( $price_period ); ?></span>
+                            </div>
                             <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
                                 <?php if ($language === 'sv') : ?>
                                     <li>500 AI-meddelanden / mån</li>
@@ -456,7 +482,11 @@ function axgaists_options_page() {
                     <div style="flex: 1; min-width: 260px; max-width: 320px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
                             <img src="<?php echo esc_url( plugins_url( 'assets/images/AxG_Silver.png', __FILE__ ) ); ?>" style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" />
-                            <h4 style="margin: 0 0 5px 0; color: #38bdf8; font-size: 15px; font-weight: bold;"><?php echo esc_html( $silver_title ); ?></h4>
+                            <h4 style="margin: 0 0 4px 0; color: #38bdf8; font-size: 15px; font-weight: bold;"><?php echo esc_html( $silver_title ); ?></h4>
+                            <div style="font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 12px; display: flex; align-items: baseline; gap: 4px;">
+                                <span><?php echo esc_html( $silver_price_tag ); ?></span>
+                                <span style="font-size: 12px; font-weight: normal; color: #94a3b8;"><?php echo esc_html( $price_period ); ?></span>
+                            </div>
                             <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
                                 <?php if ($language === 'sv') : ?>
                                     <li>2 000 AI-meddelanden / mån</li>
@@ -480,7 +510,11 @@ function axgaists_options_page() {
                     <div style="flex: 1; min-width: 260px; max-width: 320px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
                             <img src="<?php echo esc_url( plugins_url( 'assets/images/AxG_Gold.png', __FILE__ ) ); ?>" style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" />
-                            <h4 style="margin: 0 0 5px 0; color: #a78bfa; font-size: 15px; font-weight: bold;"><?php echo esc_html( $gold_title ); ?></h4>
+                            <h4 style="margin: 0 0 4px 0; color: #a78bfa; font-size: 15px; font-weight: bold;"><?php echo esc_html( $gold_title ); ?></h4>
+                            <div style="font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 12px; display: flex; align-items: baseline; gap: 4px;">
+                                <span><?php echo esc_html( $gold_price_tag ); ?></span>
+                                <span style="font-size: 12px; font-weight: normal; color: #94a3b8;"><?php echo esc_html( $price_period ); ?></span>
+                            </div>
                             <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
                                 <?php if ($language === 'sv') : ?>
                                     <li>Obegränsat med AI-meddelanden</li>
@@ -766,8 +800,8 @@ function axgaists_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.17' );
-    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.17', true );
+    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.18' );
+    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.18', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
