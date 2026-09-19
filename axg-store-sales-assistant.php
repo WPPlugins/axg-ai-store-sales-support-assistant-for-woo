@@ -2,8 +2,8 @@
 // phpcs:ignorefile Generic.PHP.DiscourageGoto.Found
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
- * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgaists_chat]
- * Version: 1.1.18
+ * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgai_woo_chat]
+ * Version: 2.0.14
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -12,6 +12,8 @@
  * Requires at least: 5.0
  * Tested up to: 7.0.3
  * Requires PHP: 7.2
+ * Text Domain: axgai_woo
+ * Domain Path: /languages
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -19,11 +21,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // --- Step 1: Database Setup on Activation ---
-register_activation_hook( __FILE__, 'axgaists_activate_plugin' );
+register_activation_hook( __FILE__, 'axgai_woo_activate_plugin' );
 
-function axgaists_activate_plugin() {
+function axgai_woo_activate_plugin() {
     global $wpdb;
-    $table_name = $wpdb->prefix . 'axgaists_conversations';
+    $table_name = $wpdb->prefix . 'axgai_woo_conversations';
     $charset_collate = $wpdb->get_charset_collate();
 
     $sql = "CREATE TABLE $table_name (
@@ -41,70 +43,73 @@ function axgaists_activate_plugin() {
 }
 
 // --- Step 2: Register Settings & Admin Menu ---
-add_action( 'admin_menu', 'axgaists_add_admin_menu' );
-add_action( 'admin_init', 'axgaists_settings_init' );
-add_action( 'admin_enqueue_scripts', 'axgaists_admin_enqueue_scripts' );
+add_action( 'admin_menu', 'axgai_woo_add_admin_menu' );
+add_action( 'admin_init', 'axgai_woo_settings_init' );
+add_action( 'admin_enqueue_scripts', 'axgai_woo_admin_enqueue_scripts' );
 
-function axgaists_admin_enqueue_scripts( $hook ) {
+function axgai_woo_admin_enqueue_scripts( $hook ) {
     if ( strpos( $hook, 'axg-store-sales-assistant' ) === false ) {
         return;
     }
     wp_enqueue_media();
 }
 
-function axgaists_add_admin_menu() {
+function axgai_woo_add_admin_menu() {
     add_menu_page(
-        'AxG AI WooCommerce Settings',
-        'AxG AI Woo',
+        __( 'AxG AI WooCommerce Settings', 'axgai_woo' ),
+        __( 'AxG AI Woo', 'axgai_woo' ),
         'manage_options',
         'axg-store-sales-assistant',
-        'axgaists_options_page',
+        'axgai_woo_options_page',
         'dashicons-cart',
         58
     );
 
     add_submenu_page(
         'axg-store-sales-assistant',
-        'Settings',
-        'Settings',
+        __( 'Settings', 'axgai_woo' ),
+        __( 'Settings', 'axgai_woo' ),
         'manage_options',
         'axg-store-sales-assistant',
-        'axgaists_options_page'
+        'axgai_woo_options_page'
     );
 
     add_submenu_page(
         'axg-store-sales-assistant',
-        'Conversation Insights',
-        'Conversation Insights',
+        __( 'Conversation Insights', 'axgai_woo' ),
+        __( 'Conversation Insights', 'axgai_woo' ),
         'manage_options',
         'axg-store-sales-assistant-insights',
-        'axgaists_insights_page'
+        'axgai_woo_insights_page'
     );
 }
 
-function axgaists_settings_init() {
-    register_setting( 'axgaists_settings_group', 'axgaists_agent_id', array( 'sanitize_callback' => 'sanitize_text_field' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_slug', array( 'sanitize_callback' => 'sanitize_text_field' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_language', array( 'sanitize_callback' => 'sanitize_text_field' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_chat_title', array( 'sanitize_callback' => 'sanitize_text_field' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_color_theme', array( 'sanitize_callback' => 'sanitize_hex_color' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_contact_email', array( 'sanitize_callback' => 'sanitize_email' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_avatar_url', array( 'sanitize_callback' => 'esc_url_raw' ) ); // Customizable chatbot avatar!
-    register_setting( 'axgaists_settings_group', 'axgaists_header_image_url', array( 'sanitize_callback' => 'esc_url_raw' ) ); // Customizable chatbot header background!
-    register_setting( 'axgaists_settings_group', 'axgaists_persona', array( 'sanitize_callback' => 'sanitize_textarea_field' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_trigger_inactivity', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_trigger_scroll', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_trigger_exit', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_quick_question_1', array( 'sanitize_callback' => 'sanitize_text_field' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_quick_question_2', array( 'sanitize_callback' => 'sanitize_text_field' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_quick_question_3', array( 'sanitize_callback' => 'sanitize_text_field' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_contact_info', array( 'sanitize_callback' => 'sanitize_textarea_field' ) );
-    register_setting( 'axgaists_settings_group', 'axgaists_opening_hours', array( 'sanitize_callback' => 'sanitize_textarea_field' ) );
+function axgai_woo_settings_init() {
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_agent_id', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_slug', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_language', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_chat_title', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_color_theme', array( 'sanitize_callback' => 'sanitize_hex_color' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_contact_email', array( 'sanitize_callback' => 'sanitize_email' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_avatar_url', array( 'sanitize_callback' => 'esc_url_raw' ) ); // Customizable chatbot avatar!
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_header_image_url', array( 'sanitize_callback' => 'esc_url_raw' ) ); // Customizable chatbot header background!
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_persona', array( 'sanitize_callback' => 'sanitize_textarea_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_trigger_inactivity', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_trigger_scroll', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_trigger_exit', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_quick_question_1', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_quick_question_2', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_quick_question_3', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_contact_info', array( 'sanitize_callback' => 'sanitize_textarea_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_opening_hours', array( 'sanitize_callback' => 'sanitize_textarea_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_whatsapp_number', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_messenger_link', array( 'sanitize_callback' => 'esc_url_raw' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_enable_image_upload', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
 }
 
 // --- Step 3: Admin Options Page ---
-function axgaists_options_page() {
-    $language = get_option('axgaists_language', 'en');
+function axgai_woo_options_page() {
+    $language = get_option('axgai_woo_language', 'en');
     $onboarding_url = "https://axelsson.graphics/en/onboarding";
     $onboarding_title = "Need an Agent ID or Client Slug? 🤔";
     $onboarding_desc = "Configure a fully customized, professional AI assistant for your WooCommerce store in 10 seconds. Your Agent ID and Client Slug will be delivered instantly to your email!";
@@ -143,27 +148,9 @@ function axgaists_options_page() {
     $triggers_desc = "Enable or disable individual sales-driving triggers. All triggers are deactivated by default.";
 
     // Pricing Translations
+    // Pricing Translations
     $pricing_title = "Upgrade to Premium & Boost Your Sales! 🚀💸";
     $pricing_desc = "Our intelligent AI sales assistant is ready to lift your store's conversions 24/7. Choose the plan that fits your growth!";
-    
-    // Determine currency: non-European stores / locales use USD ($), Europe uses EUR (€)
-    $wc_currency = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : '';
-    $euro_locales = array( 'sv_SE', 'de_DE', 'de_AT', 'de_CH', 'en_GB', 'en_IE', 'fr_FR', 'es_ES', 'it_IT', 'nl_NL', 'da_DK', 'fi', 'nb_NO', 'nn_NO', 'pl_PL' );
-    $euro_currencies = array( 'EUR', 'GBP', 'SEK', 'NOK', 'DKK', 'PLN', 'CHF' );
-    $is_outside_europe = ( $wc_currency === 'USD' ) || ( ! in_array( $wc_currency, $euro_currencies, true ) && ! in_array( get_locale(), $euro_locales, true ) && $language === 'en' );
-
-    if ( $is_outside_europe ) {
-        $bronze_price_tag = "$10";
-        $silver_price_tag = "$24.90";
-        $gold_price_tag   = "$49";
-        $price_period     = "/ month";
-    } else {
-        $bronze_price_tag = "10 €";
-        $silver_price_tag = "24,90 €";
-        $gold_price_tag   = "49 €";
-        $price_period     = "/ month";
-    }
-
     $bronze_title = "Starter Plan";
     $bronze_btn = "Upgrade to Starter";
     $silver_title = "Grow Plan ⭐";
@@ -214,10 +201,6 @@ function axgaists_options_page() {
 
         $pricing_title = "Uppgradera till Premium & maximera din försäljning! 🚀💸";
         $pricing_desc = "Vår intelligenta AI-säljare är redo att lyfta din butik dygnet runt. Välj det tillväxt-paket som passar din e-handel bäst!";
-        $bronze_price_tag = "10 €";
-        $silver_price_tag = "24,90 €";
-        $gold_price_tag   = "49 €";
-        $price_period     = "/ mån";
         $bronze_title = "Starter-paket";
         $bronze_btn = "Uppgradera till Starter";
         $silver_title = "Grow-paket ⭐";
@@ -262,8 +245,8 @@ function axgaists_options_page() {
         $triggers_desc = "Enable or disable individual sales-driving triggers. All triggers are deactivated by default.";
     }
 
-    $client_slug = get_option('axgaists_slug', '');
-    $client_email = get_option('axgaists_contact_email', get_option('admin_email', ''));
+    $client_slug = get_option('axgai_woo_slug', '');
+    $client_email = get_option('axgai_woo_contact_email', get_option('admin_email', ''));
 
     $bronze_link = "https://checkout.axelsson.graphics/28EaF0fir3cGaDIfhWfMA03";
     $silver_link = "https://checkout.axelsson.graphics/5kQ9AW0nx3cGeTY8TyfMA04";
@@ -298,14 +281,14 @@ function axgaists_options_page() {
                 <p style="font-size: 13px; color: #666;"><?php echo esc_html( $desc_intro ); ?></p>
 
                 <form method="post" action="options.php">
-                    <?php settings_fields( 'axgaists_settings_group' ); ?>
-                    <?php do_settings_sections( 'axgaists_settings_group' ); ?>
+                    <?php settings_fields( 'axgai_woo_settings_group' ); ?>
+                    <?php do_settings_sections( 'axgai_woo_settings_group' ); ?>
 
                     <table class="form-table">
                         <tr valign="top">
                             <th scope="row" style="width: 150px; font-weight: bold;">Agent ID</th>
                             <td>
-                                <input type="text" name="axgaists_agent_id" value="<?php echo esc_attr( get_option('axgaists_agent_id') ); ?>" class="regular-text" style="width: 100%; max-width: 450px;" placeholder="e.g. ac7bb8e6-322a-49ce-a103-af8b1a034939" required />
+                                <input type="text" name="axgai_woo_agent_id" value="<?php echo esc_attr( get_option('axgai_woo_agent_id') ); ?>" class="regular-text" style="width: 100%; max-width: 450px;" placeholder="e.g. ac7bb8e6-322a-49ce-a103-af8b1a034939" required />
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $agent_id_desc ); ?></p>
                             </td>
                         </tr>
@@ -313,7 +296,7 @@ function axgaists_options_page() {
                         <tr valign="top">
                             <th scope="row" style="width: 150px; font-weight: bold;">Client Slug</th>
                             <td>
-                                <input type="text" name="axgaists_slug" value="<?php echo esc_attr( get_option('axgaists_slug') ); ?>" class="regular-text" style="width: 100%; max-width: 450px;" placeholder="e.g. domainname" required />
+                                <input type="text" name="axgai_woo_slug" value="<?php echo esc_attr( get_option('axgai_woo_slug') ); ?>" class="regular-text" style="width: 100%; max-width: 450px;" placeholder="e.g. domainname" required />
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $slug_desc ); ?></p>
                             </td>
                         </tr>
@@ -321,7 +304,7 @@ function axgaists_options_page() {
                         <tr valign="top">
                             <th scope="row" style="width: 150px; font-weight: bold;">Contact Email</th>
                             <td>
-                                <input type="email" name="axgaists_contact_email" value="<?php echo esc_attr( get_option('axgaists_contact_email', get_option('admin_email', 'hej@axelsson.graphics')) ); ?>" class="regular-text" style="width: 100%; max-width: 450px;" />
+                                <input type="email" name="axgai_woo_contact_email" value="<?php echo esc_attr( get_option('axgai_woo_contact_email', get_option('admin_email', 'hej@axelsson.graphics')) ); ?>" class="regular-text" style="width: 100%; max-width: 450px;" />
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $email_desc ); ?></p>
                             </td>
                         </tr>
@@ -330,9 +313,9 @@ function axgaists_options_page() {
                             <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $quick_questions_lbl ); ?></th>
                             <td>
                                 <div style="display: flex; flex-direction: column; gap: 8px; max-width: 450px;">
-                                    <input type="text" name="axgaists_quick_question_1" value="<?php echo esc_attr( get_option('axgaists_quick_question_1', '') ); ?>" placeholder="<?php echo esc_attr( $quick_q_placeholder1 ); ?>" style="width: 100%;" />
-                                    <input type="text" name="axgaists_quick_question_2" value="<?php echo esc_attr( get_option('axgaists_quick_question_2', '') ); ?>" placeholder="<?php echo esc_attr( $quick_q_placeholder2 ); ?>" style="width: 100%;" />
-                                    <input type="text" name="axgaists_quick_question_3" value="<?php echo esc_attr( get_option('axgaists_quick_question_3', '') ); ?>" placeholder="<?php echo esc_attr( $quick_q_placeholder3 ); ?>" style="width: 100%;" />
+                                    <input type="text" name="axgai_woo_quick_question_1" value="<?php echo esc_attr( get_option('axgai_woo_quick_question_1', '') ); ?>" placeholder="<?php echo esc_attr( $quick_q_placeholder1 ); ?>" style="width: 100%;" />
+                                    <input type="text" name="axgai_woo_quick_question_2" value="<?php echo esc_attr( get_option('axgai_woo_quick_question_2', '') ); ?>" placeholder="<?php echo esc_attr( $quick_q_placeholder2 ); ?>" style="width: 100%;" />
+                                    <input type="text" name="axgai_woo_quick_question_3" value="<?php echo esc_attr( get_option('axgai_woo_quick_question_3', '') ); ?>" placeholder="<?php echo esc_attr( $quick_q_placeholder3 ); ?>" style="width: 100%;" />
                                 </div>
                                 <p class="description" style="font-size: 11px; margin-top: 5px;"><?php echo esc_html( $quick_questions_desc ); ?></p>
                             </td>
@@ -341,7 +324,7 @@ function axgaists_options_page() {
                         <tr valign="top">
                             <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $contact_info_lbl ); ?></th>
                             <td>
-                                <textarea name="axgaists_contact_info" rows="3" style="width: 100%; max-width: 450px; font-family: monospace;" placeholder="<?php echo esc_attr( $contact_info_placeholder ); ?>"><?php echo esc_textarea( get_option('axgaists_contact_info', '') ); ?></textarea>
+                                <textarea name="axgai_woo_contact_info" rows="3" style="width: 100%; max-width: 450px; font-family: monospace;" placeholder="<?php echo esc_attr( $contact_info_placeholder ); ?>"><?php echo esc_textarea( get_option('axgai_woo_contact_info', '') ); ?></textarea>
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $contact_info_desc ); ?></p>
                             </td>
                         </tr>
@@ -349,7 +332,7 @@ function axgaists_options_page() {
                         <tr valign="top">
                             <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $opening_hours_lbl ); ?></th>
                             <td>
-                                <textarea name="axgaists_opening_hours" rows="3" style="width: 100%; max-width: 450px; font-family: monospace;" placeholder="<?php echo esc_attr( $opening_hours_placeholder ); ?>"><?php echo esc_textarea( get_option('axgaists_opening_hours', '') ); ?></textarea>
+                                <textarea name="axgai_woo_opening_hours" rows="3" style="width: 100%; max-width: 450px; font-family: monospace;" placeholder="<?php echo esc_attr( $opening_hours_placeholder ); ?>"><?php echo esc_textarea( get_option('axgai_woo_opening_hours', '') ); ?></textarea>
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $opening_hours_desc ); ?></p>
                             </td>
                         </tr>
@@ -357,20 +340,20 @@ function axgaists_options_page() {
                         <tr valign="top">
                             <th scope="row" style="width: 150px; font-weight: bold;">Language</th>
                             <td>
-                                <select name="axgaists_language" style="width: 100%; max-width: 200px;">
-                                    <option value="en" <?php selected( get_option('axgaists_language', 'en'), 'en' ); ?>>English</option>
-                                    <option value="fr" <?php selected( get_option('axgaists_language'), 'fr' ); ?>>Français</option>
-                                    <option value="es" <?php selected( get_option('axgaists_language'), 'es' ); ?>>Español</option>
-                                    <option value="pl" <?php selected( get_option('axgaists_language'), 'pl' ); ?>>Polski</option>
-                                    <option value="fa" <?php selected( get_option('axgaists_language'), 'fa' ); ?>>Persian (فارسی)</option>
-                                    <option value="it" <?php selected( get_option('axgaists_language'), 'it' ); ?>>Italiano</option>
-                                    <option value="de" <?php selected( get_option('axgaists_language'), 'de' ); ?>>Deutsch</option>
-                                    <option value="pt" <?php selected( get_option('axgaists_language'), 'pt' ); ?>>Português</option>
-                                    <option value="nl" <?php selected( get_option('axgaists_language'), 'nl' ); ?>>Nederlands</option>
-                                    <option value="ru" <?php selected( get_option('axgaists_language'), 'ru' ); ?>>Русский</option>
-                                    <option value="ar" <?php selected( get_option('axgaists_language'), 'ar' ); ?>>العربية</option>
-                                    <option value="tr" <?php selected( get_option('axgaists_language'), 'tr' ); ?>>Türkçe</option>
-                                    <option value="sv" <?php selected( get_option('axgaists_language'), 'sv' ); ?>>Svenska</option>
+                                <select name="axgai_woo_language" style="width: 100%; max-width: 200px;">
+                                    <option value="en" <?php selected( get_option('axgai_woo_language', 'en'), 'en' ); ?>>English</option>
+                                    <option value="fr" <?php selected( get_option('axgai_woo_language'), 'fr' ); ?>>Français</option>
+                                    <option value="es" <?php selected( get_option('axgai_woo_language'), 'es' ); ?>>Español</option>
+                                    <option value="pl" <?php selected( get_option('axgai_woo_language'), 'pl' ); ?>>Polski</option>
+                                    <option value="fa" <?php selected( get_option('axgai_woo_language'), 'fa' ); ?>>Persian (فارسی)</option>
+                                    <option value="it" <?php selected( get_option('axgai_woo_language'), 'it' ); ?>>Italiano</option>
+                                    <option value="de" <?php selected( get_option('axgai_woo_language'), 'de' ); ?>>Deutsch</option>
+                                    <option value="pt" <?php selected( get_option('axgai_woo_language'), 'pt' ); ?>>Português</option>
+                                    <option value="nl" <?php selected( get_option('axgai_woo_language'), 'nl' ); ?>>Nederlands</option>
+                                    <option value="ru" <?php selected( get_option('axgai_woo_language'), 'ru' ); ?>>Русский</option>
+                                    <option value="ar" <?php selected( get_option('axgai_woo_language'), 'ar' ); ?>>العربية</option>
+                                    <option value="tr" <?php selected( get_option('axgai_woo_language'), 'tr' ); ?>>Türkçe</option>
+                                    <option value="sv" <?php selected( get_option('axgai_woo_language'), 'sv' ); ?>>Svenska</option>
                                 </select>
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $lang_desc ); ?></p>
                             </td>
@@ -379,7 +362,7 @@ function axgaists_options_page() {
                         <tr valign="top">
                             <th scope="row" style="width: 150px; font-weight: bold;">Chat Title</th>
                             <td>
-                                <input type="text" name="axgaists_chat_title" value="<?php echo esc_attr( get_option('axgaists_chat_title', 'AI Store Assistant') ); ?>" class="regular-text" style="width: 100%; max-width: 450px;" />
+                                <input type="text" name="axgai_woo_chat_title" value="<?php echo esc_attr( get_option('axgai_woo_chat_title', 'AI Store Assistant') ); ?>" class="regular-text" style="width: 100%; max-width: 450px;" />
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $title_desc ); ?></p>
                             </td>
                         </tr>
@@ -388,8 +371,8 @@ function axgaists_options_page() {
                             <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $avatar_lbl ); ?></th>
                             <td>
                                 <div style="display: flex; gap: 8px; align-items: center; max-width: 580px; margin-bottom: 5px;">
-                                    <input type="text" name="axgaists_avatar_url" id="axgaists_avatar_url" value="<?php echo esc_url( get_option('axgaists_avatar_url') ); ?>" class="regular-text" style="flex: 1;" placeholder="e.g. https://domain.com/avatar.png" />
-                                    <button type="button" class="button axgaists-media-upload-button" data-target="axgaists_avatar_url" style="white-space: nowrap;"><?php echo esc_html( $choose_image_btn ); ?></button>
+                                    <input type="text" name="axgai_woo_avatar_url" id="axgai_woo_avatar_url" value="<?php echo esc_url( get_option('axgai_woo_avatar_url') ); ?>" class="regular-text" style="flex: 1;" placeholder="e.g. https://domain.com/avatar.png" />
+                                    <button type="button" class="button axgai_woo-media-upload-button" data-target="axgai_woo_avatar_url" style="white-space: nowrap;"><?php echo esc_html( $choose_image_btn ); ?></button>
                                 </div>
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $avatar_desc ); ?></p>
                             </td>
@@ -399,17 +382,33 @@ function axgaists_options_page() {
                             <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $header_image_lbl ); ?></th>
                             <td>
                                 <div style="display: flex; gap: 8px; align-items: center; max-width: 580px; margin-bottom: 5px;">
-                                    <input type="text" name="axgaists_header_image_url" id="axgaists_header_image_url" value="<?php echo esc_url( get_option('axgaists_header_image_url') ); ?>" class="regular-text" style="flex: 1;" placeholder="e.g. https://domain.com/header-bg.png" />
-                                    <button type="button" class="button axgaists-media-upload-button" data-target="axgaists_header_image_url" style="white-space: nowrap;"><?php echo esc_html( $choose_image_btn ); ?></button>
+                                    <input type="text" name="axgai_woo_header_image_url" id="axgai_woo_header_image_url" value="<?php echo esc_url( get_option('axgai_woo_header_image_url') ); ?>" class="regular-text" style="flex: 1;" placeholder="e.g. https://domain.com/header-bg.png" />
+                                    <button type="button" class="button axgai_woo-media-upload-button" data-target="axgai_woo_header_image_url" style="white-space: nowrap;"><?php echo esc_html( $choose_image_btn ); ?></button>
                                 </div>
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $header_image_desc ); ?></p>
                             </td>
                         </tr>
 
                         <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">WhatsApp Number</th>
+                            <td>
+                                <input type="text" name="axgai_woo_whatsapp_number" value="<?php echo esc_attr( get_option('axgai_woo_whatsapp_number', '') ); ?>" class="regular-text" style="width: 100%; max-width: 450px;" placeholder="+46123456789" />
+                                <p class="description" style="font-size: 11px;">Enter international format (e.g. +46...). Leave blank to disable WhatsApp button.</p>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">Messenger Link</th>
+                            <td>
+                                <input type="text" name="axgai_woo_messenger_link" value="<?php echo esc_url( get_option('axgai_woo_messenger_link', '') ); ?>" class="regular-text" style="width: 100%; max-width: 450px;" placeholder="https://m.me/yourpage" />
+                                <p class="description" style="font-size: 11px;">Enter your m.me profile link. Leave blank to disable Messenger button.</p>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
                             <th scope="row" style="width: 150px; font-weight: bold;">Color Theme</th>
                             <td>
-                                <input type="color" name="axgaists_color_theme" value="<?php echo esc_attr( get_option('axgaists_color_theme', '#10b981') ); ?>" />
+                                <input type="color" name="axgai_woo_color_theme" value="<?php echo esc_attr( get_option('axgai_woo_color_theme', '#10b981') ); ?>" />
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $color_desc ); ?></p>
                             </td>
                         </tr>
@@ -418,15 +417,15 @@ function axgaists_options_page() {
                             <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $triggers_title ); ?></th>
                             <td>
                                 <label style="display: block; margin-bottom: 10px; font-size: 13px;">
-                                    <input type="checkbox" name="axgaists_trigger_inactivity" value="1" <?php checked( 1, get_option('axgaists_trigger_inactivity', 0) ); ?> style="margin-right: 8px;" />
+                                    <input type="checkbox" name="axgai_woo_trigger_inactivity" value="1" <?php checked( 1, get_option('axgai_woo_trigger_inactivity', 0) ); ?> style="margin-right: 8px;" />
                                     <?php echo esc_html( $trigger_inactivity_lbl ); ?>
                                 </label>
                                 <label style="display: block; margin-bottom: 10px; font-size: 13px;">
-                                    <input type="checkbox" name="axgaists_trigger_scroll" value="1" <?php checked( 1, get_option('axgaists_trigger_scroll', 0) ); ?> style="margin-right: 8px;" />
+                                    <input type="checkbox" name="axgai_woo_trigger_scroll" value="1" <?php checked( 1, get_option('axgai_woo_trigger_scroll', 0) ); ?> style="margin-right: 8px;" />
                                     <?php echo esc_html( $trigger_scroll_lbl ); ?>
                                 </label>
                                 <label style="display: block; margin-bottom: 10px; font-size: 13px;">
-                                    <input type="checkbox" name="axgaists_trigger_exit" value="1" <?php checked( 1, get_option('axgaists_trigger_exit', 0) ); ?> style="margin-right: 8px;" />
+                                    <input type="checkbox" name="axgai_woo_trigger_exit" value="1" <?php checked( 1, get_option('axgai_woo_trigger_exit', 0) ); ?> style="margin-right: 8px;" />
                                     <?php echo esc_html( $trigger_exit_lbl ); ?>
                                 </label>
                                 <p class="description" style="font-size: 11px; margin-top: 10px;"><?php echo esc_html( $triggers_desc ); ?></p>
@@ -436,8 +435,19 @@ function axgaists_options_page() {
                         <tr valign="top">
                             <th scope="row" style="width: 150px; font-weight: bold;">Bot Persona & Instructions</th>
                             <td>
-                                <textarea name="axgaists_persona" rows="4" style="width: 100%; max-width: 450px;" placeholder="Describe your store's sales assistant persona..."><?php echo esc_textarea( get_option('axgaists_persona', 'You are a friendly, highly intelligent WooCommerce sales assistant. Help visitors find the most suitable products from our catalog, answer questions about availability, pricing, and provide personalized cross-selling suggestions dynamically.') ); ?></textarea>
+                                <textarea name="axgai_woo_persona" rows="4" style="width: 100%; max-width: 450px;" placeholder="Describe your store's sales assistant persona..."><?php echo esc_textarea( get_option('axgai_woo_persona', 'You are a friendly, highly intelligent WooCommerce sales assistant. Help visitors find the most suitable products from our catalog, answer questions about availability, pricing, and provide personalized cross-selling suggestions dynamically.') ); ?></textarea>
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $persona_desc ); ?></p>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">Enable Visual Search (Premium)</th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="axgai_woo_enable_image_upload" value="1" <?php checked( 1, get_option( 'axgai_woo_enable_image_upload', 0 ), true ); ?> />
+                                    Enable the image upload button (Multimodal visual search via Gemini 2.5 Flash).
+                                </label>
+                                <p class="description" style="font-size: 11px;">Allow users to upload pictures to search for similar products (Premium Tiers only).</p>
                             </td>
                         </tr>
                     </table>
@@ -456,11 +466,7 @@ function axgaists_options_page() {
                     <div style="flex: 1; min-width: 260px; max-width: 320px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
                             <img src="<?php echo esc_url( plugins_url( 'assets/images/AxG_Bronz.png', __FILE__ ) ); ?>" style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" />
-                            <h4 style="margin: 0 0 4px 0; color: #10b981; font-size: 15px; font-weight: bold;"><?php echo esc_html( $bronze_title ); ?></h4>
-                            <div style="font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 12px; display: flex; align-items: baseline; gap: 4px;">
-                                <span><?php echo esc_html( $bronze_price_tag ); ?></span>
-                                <span style="font-size: 12px; font-weight: normal; color: #94a3b8;"><?php echo esc_html( $price_period ); ?></span>
-                            </div>
+                            <h4 style="margin: 0 0 5px 0; color: #10b981; font-size: 15px; font-weight: bold;"><?php echo esc_html( $bronze_title ); ?></h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
                                 <?php if ($language === 'sv') : ?>
                                     <li>500 AI-meddelanden / mån</li>
@@ -482,11 +488,7 @@ function axgaists_options_page() {
                     <div style="flex: 1; min-width: 260px; max-width: 320px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
                             <img src="<?php echo esc_url( plugins_url( 'assets/images/AxG_Silver.png', __FILE__ ) ); ?>" style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" />
-                            <h4 style="margin: 0 0 4px 0; color: #38bdf8; font-size: 15px; font-weight: bold;"><?php echo esc_html( $silver_title ); ?></h4>
-                            <div style="font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 12px; display: flex; align-items: baseline; gap: 4px;">
-                                <span><?php echo esc_html( $silver_price_tag ); ?></span>
-                                <span style="font-size: 12px; font-weight: normal; color: #94a3b8;"><?php echo esc_html( $price_period ); ?></span>
-                            </div>
+                            <h4 style="margin: 0 0 5px 0; color: #38bdf8; font-size: 15px; font-weight: bold;"><?php echo esc_html( $silver_title ); ?></h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
                                 <?php if ($language === 'sv') : ?>
                                     <li>2 000 AI-meddelanden / mån</li>
@@ -510,11 +512,7 @@ function axgaists_options_page() {
                     <div style="flex: 1; min-width: 260px; max-width: 320px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
                             <img src="<?php echo esc_url( plugins_url( 'assets/images/AxG_Gold.png', __FILE__ ) ); ?>" style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" />
-                            <h4 style="margin: 0 0 4px 0; color: #a78bfa; font-size: 15px; font-weight: bold;"><?php echo esc_html( $gold_title ); ?></h4>
-                            <div style="font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 12px; display: flex; align-items: baseline; gap: 4px;">
-                                <span><?php echo esc_html( $gold_price_tag ); ?></span>
-                                <span style="font-size: 12px; font-weight: normal; color: #94a3b8;"><?php echo esc_html( $price_period ); ?></span>
-                            </div>
+                            <h4 style="margin: 0 0 5px 0; color: #a78bfa; font-size: 15px; font-weight: bold;"><?php echo esc_html( $gold_title ); ?></h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
                                 <?php if ($language === 'sv') : ?>
                                     <li>Obegränsat med AI-meddelanden</li>
@@ -544,6 +542,17 @@ function axgaists_options_page() {
                     <?php endif; ?>
                 </p>
 
+                <!-- Manage Subscription below cards -->
+                <div style="text-align: center; margin-top: 15px;">
+                    <?php if ($language === 'sv') : ?>
+                        <a href="mailto:support@axelsson.graphics?subject=Avregistrera" style="font-size: 11px; color: #94a3b8; text-decoration: underline;">Hantera eller avsluta din prenumeration</a>
+                    <?php elseif ($language === 'de') : ?>
+                        <a href="mailto:support@axelsson.graphics?subject=Abmelden" style="font-size: 11px; color: #94a3b8; text-decoration: underline;">Abonnement verwalten oder kündigen</a>
+                    <?php else : ?>
+                        <a href="mailto:support@axelsson.graphics?subject=Unsubscribe" style="font-size: 11px; color: #94a3b8; text-decoration: underline;">Manage or cancel your subscription</a>
+                    <?php endif; ?>
+                </div>
+
             </div>
         </div>
     </div>
@@ -551,7 +560,7 @@ function axgaists_options_page() {
     <!-- WordPress Media Library Frame Uploader Script -->
     <script>
     jQuery(document).ready(function($){
-        $('.axgaists-media-upload-button').click(function(e) {
+        $('.axgai_woo-media-upload-button').click(function(e) {
             e.preventDefault();
             var button = $(this);
             var target_id = button.data('target');
@@ -578,22 +587,23 @@ function axgaists_options_page() {
 }
 
 // --- Step 4: Conversation Insights Admin Dashboard ---
-function axgaists_insights_page() {
+function axgai_woo_insights_page() {
     global $wpdb;
-    $table_name = $wpdb->prefix . 'axgaists_conversations';
+    $table_name = $wpdb->prefix . 'axgai_woo_conversations';
 
     // Self-healing: ensure custom database table exists (handles skipped activation hooks on files overwrite)
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
     if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table_name ) ) !== $table_name ) {
-        axgaists_activate_plugin();
+        axgai_woo_activate_plugin();
     }
 
     // Handle AJAX-like action for AI analysis
     if ( isset($_GET['action']) && $_GET['action'] === 'analyze_logs' ) {
-        check_admin_referer( 'axgaists_analyze_logs' );
+        check_admin_referer( 'axgai_woo_analyze_logs' );
         
-        $agent_id = get_option('axgaists_agent_id');
-        $slug = get_option('axgaists_slug');
-        $language = get_option('axgaists_language', 'en');
+        $agent_id = get_option('axgai_woo_agent_id');
+        $slug = get_option('axgai_woo_slug');
+        $language = get_option('axgai_woo_language', 'en');
 
         if ( ! $agent_id ) {
             echo '<div class="notice notice-error"><p>Please configure your Agent ID and Slug first.</p></div>';
@@ -601,7 +611,8 @@ function axgaists_insights_page() {
         }
 
         // Fetch last 50 entries to analyze
-        $logs = $wpdb->get_results( "SELECT sender, message FROM $table_name ORDER BY id DESC LIMIT 50" );
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $logs = $wpdb->get_results( "SELECT sender, message FROM {$table_name} ORDER BY id DESC LIMIT 50" );
         if ( empty( $logs ) ) {
             echo '<div class="notice notice-warning"><p>No conversation history found yet to analyze!</p></div>';
             return;
@@ -668,9 +679,10 @@ function axgaists_insights_page() {
 
     // Standard Conversations Listing
     // Group logs by session_id and fetch count & latest timestamp
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
     $sessions = $wpdb->get_results( "
         SELECT session_id, COUNT(id) as msg_count, MAX(timestamp) as last_active 
-        FROM $table_name 
+        FROM {$table_name} 
         GROUP BY session_id 
         ORDER BY last_active DESC 
         LIMIT 30
@@ -686,7 +698,7 @@ function axgaists_insights_page() {
 
         <?php if ( ! empty($sessions) ) : ?>
             <div style="margin: 15px 0;">
-                <a href="<?php echo esc_url( wp_nonce_url( add_query_arg( 'action', 'analyze_logs' ), 'axgaists_analyze_logs' ) ); ?>" class="button button-primary" style="background-color: #10b981; border-color: #10b981; font-weight: bold; text-shadow: none;">
+                <a href="<?php echo esc_url( wp_nonce_url( add_query_arg( 'action', 'analyze_logs' ), 'axgai_woo_analyze_logs' ) ); ?>" class="button button-primary" style="background-color: #10b981; border-color: #10b981; font-weight: bold; text-shadow: none;">
                     ✨ Analyze Last 50 Chats with Gemini AI
                 </a>
             </div>
@@ -731,9 +743,10 @@ function axgaists_insights_page() {
                     </div>
                 <?php else : ?>
                     <?php 
+                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
                     $chat_logs = $wpdb->get_results( $wpdb->prepare( "
                         SELECT sender, message, timestamp 
-                        FROM $table_name 
+                        FROM {$table_name} 
                         WHERE session_id = %s 
                         ORDER BY id ASC
                     ", $active_session ) );
@@ -763,7 +776,7 @@ function axgaists_insights_page() {
 }
 
 // --- Step 5: WooCommerce Catalog Retrieval Helper ---
-function axgaists_get_catalog() {
+function axgai_woo_get_catalog() {
     if ( ! class_exists( 'WooCommerce' ) ) {
         return array();
     }
@@ -777,11 +790,15 @@ function axgaists_get_catalog() {
     $catalog = array();
 
     foreach ( $products as $product ) {
+        $image_id = $product->get_image_id();
+        $image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'medium' ) : '';
+        
         $catalog[] = array(
             'id'    => $product->get_id(),
             'title' => $product->get_name(),
             'price' => strip_tags( html_entity_decode( wc_price( $product->get_price() ) ) ),
             'url'   => $product->get_permalink(),
+            'image' => $image_url,
             'cat'   => wp_get_post_terms( $product->get_id(), 'product_cat', array( 'fields' => 'names' ) ),
             'desc'  => wp_strip_all_tags( $product->get_short_description() ? $product->get_short_description() : $product->get_description() ),
             'stock' => $product->is_in_stock() ? 'In Stock' : 'Out of Stock'
@@ -792,16 +809,16 @@ function axgaists_get_catalog() {
 }
 
 // --- Step 6: Frontend Script & Styles Enqueue ---
-add_action( 'wp_enqueue_scripts', 'axgaists_enqueue_assets' );
+add_action( 'wp_enqueue_scripts', 'axgai_woo_enqueue_assets' );
 
-function axgaists_enqueue_assets() {
-    $agent_id = get_option('axgaists_agent_id');
+function axgai_woo_enqueue_assets() {
+    $agent_id = get_option('axgai_woo_agent_id');
     if ( ! $agent_id ) {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgaists-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '1.1.18' );
-    wp_enqueue_script( 'axgaists-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '1.1.18', true );
+    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.13' );
+    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.13', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
@@ -817,123 +834,48 @@ function axgaists_enqueue_assets() {
         }
     }
 
-    wp_localize_script( 'axgaists-script', 'axgaists_settings', array(
+    $qq = array();
+    $q1 = get_option('axgai_woo_quick_question_1');
+    $q2 = get_option('axgai_woo_quick_question_2');
+    $q3 = get_option('axgai_woo_quick_question_3');
+    if (!empty($q1)) $qq[] = esc_js($q1);
+    if (!empty($q2)) $qq[] = esc_js($q2);
+    if (!empty($q3)) $qq[] = esc_js($q3);
+
+    wp_localize_script( 'axgai_woo-script', 'axgai_woo_settings', array(
         'ajax_url'      => admin_url( 'admin-ajax.php' ),
-        'nonce'         => wp_create_nonce( 'axgaists_chat_nonce' ),
+        'nonce'         => wp_create_nonce( 'axgai_woo_chat_nonce' ),
         'agent_id'      => esc_js( $agent_id ),
-        'language'      => esc_js( get_option('axgaists_language', 'en') ),
-        'chat_title'    => esc_js( get_option('axgaists_chat_title', 'AI Store Assistant') ),
-        'color_theme'   => esc_js( get_option('axgaists_color_theme', '#10b981') ),
-        'slug'          => esc_js( get_option('axgaists_slug', '') ),
-        'contact_email' => esc_js( get_option('axgaists_contact_email', 'hej@axelsson.graphics') ),
-        'contact_info'  => esc_js( get_option('axgaists_contact_info', '') ), // Pass custom contact info!
-        'opening_hours' => esc_js( get_option('axgaists_opening_hours', '') ), // Pass opening hours!
+        'language'      => esc_js( get_option('axgai_woo_language', 'en') ),
+        'chat_title'    => esc_js( get_option('axgai_woo_chat_title', 'AI Store Assistant') ),
+        'color_theme'   => esc_js( get_option('axgai_woo_color_theme', '#10b981') ),
+        'avatar_url'    => esc_url( get_option('axgai_woo_avatar_url', '') ),
+        'slug'          => esc_js( get_option('axgai_woo_slug', '') ),
+        'contact_email' => esc_js( get_option('axgai_woo_contact_email', 'hej@axelsson.graphics') ),
+        'contact_info'  => esc_js( get_option('axgai_woo_contact_info', '') ), // Pass custom contact info!
+        'opening_hours' => esc_js( get_option('axgai_woo_opening_hours', '') ), // Pass opening hours!
+        'quick_questions'=> $qq, // Extracted for v2
         'cur_product'   => $current_product_info,
-        'trigger_inactivity' => (int) get_option('axgaists_trigger_inactivity', 0),
-        'trigger_scroll'     => (int) get_option('axgaists_trigger_scroll', 0),
-        'trigger_exit'       => (int) get_option('axgaists_trigger_exit', 0)
+        'trigger_inactivity' => (int) get_option('axgai_woo_trigger_inactivity', 0),
+        'trigger_scroll'     => (int) get_option('axgai_woo_trigger_scroll', 0),
+        'trigger_exit'       => (int) get_option('axgai_woo_trigger_exit', 0),
+        'is_woocommerce'     => true,
+        'enable_image_upload' => get_option('axgai_woo_enable_image_upload', 0)
     ));
 }
 
 // --- Step 7: Inject Floating Chat Widget ---
-add_action( 'wp_footer', 'axgaists_inject_widget' );
-
-function axgaists_inject_widget() {
-    $agent_id = get_option('axgaists_agent_id');
-    if ( ! $agent_id ) {
-        return;
-    }
-
-    $chat_title = esc_html( get_option('axgaists_chat_title', 'AI Store Assistant') );
-    $color_theme = esc_attr( get_option('axgaists_color_theme', '#10b981') );
-    $language = esc_attr( get_option('axgaists_language', 'en') );
-    $avatar_url = esc_url( get_option('axgaists_avatar_url', '') );
-
-    // Dictionary of native multilingual support
-    $dictionary = array(
-        'en' => array( 'greeting' => 'Hello! How can I help you today? Ask about our products, shipping, returns, or order status!', 'placeholder' => 'Ask about products, shipping, orders...', 'send' => 'Send' ),
-        'fr' => array( 'greeting' => 'Bonjour ! Comment puis-je vous aider à trouver le produit idéal aujourd\'hui ?', 'placeholder' => 'Posez une question sur nos produits...', 'send' => 'Envoyer' ),
-        'es' => array( 'greeting' => '¡Hola! ¿Cómo puedo ayudarte hoy? ¡Pregúntame sobre nuestros productos, envíos, devoluciones o el estado de tu pedido!', 'placeholder' => 'Pregunta sobre productos, envíos, pedidos...', 'send' => 'Enviar' ),
-        'pl' => array( 'greeting' => 'Cześć! Jak mogę pomóc Ci dzisiaj znaleźć idealny produkt?', 'placeholder' => 'Zapytaj o nasze produkty...', 'send' => 'Wyślij' ),
-        'fa' => array( 'greeting' => 'سلام! چطور می‌توانم به شما در پیدا کردن محصول مناسب کمک کنم؟', 'placeholder' => 'درباره محصولات ما بپرسید...', 'send' => 'ارسال' ),
-        'it' => array( 'greeting' => 'Ciao! Come posso aiutarti a trovare il prodotto perfetto oggi?', 'placeholder' => 'Chiedi dei nostri prodotti...', 'send' => 'Invia' ),
-        'de' => array( 'greeting' => 'Hallo! Wie kann ich Ihnen heute helfen? Fragen Sie gerne nach unseren Produkten, Versand, Rücksendungen oder Ihrem Bestellstatus!', 'placeholder' => 'Fragen zu Produkten, Versand, Bestellungen...', 'send' => 'Senden' ),
-        'pt' => array( 'greeting' => 'Olá! Como posso ajudar você a encontrar o produto perfeito hoje?', 'placeholder' => 'Pergunte sobre os nossos produtos...', 'send' => 'Enviar' ),
-        'nl' => array( 'greeting' => 'Hallo! Hoe kan ik je vandaag helpen het perfecte product te vinden?', 'placeholder' => 'Vraag naar onze producten...', 'send' => 'Verzenden' ),
-        'ru' => array( 'greeting' => 'Привет! Как я могу помочь вам найти идеальный товар сегодня?', 'placeholder' => 'Спросите о наших товарах...', 'send' => 'Отправить' ),
-        'ar' => array( 'greeting' => 'مرحباً! كيف يمكنني مساعدتك في العثور على المنتج المثالي اليوم؟', 'placeholder' => 'اسأل عن منتجاتنا...', 'send' => 'إرسال' ),
-        'tr' => array( 'greeting' => 'Merhaba! Bugün mükemmel ürünü bulmanıza nasıl yardımcı olabilirim?', 'placeholder' => 'Ürünlerimiz hakkında sorun...', 'send' => 'Gönder' ),
-        'sv' => array( 'greeting' => 'Hej! Hur kan jag hjälpa dig idag? Fråga gärna om våra produkter, frakt, returer eller din orderstatus!', 'placeholder' => 'Fråga om produkter, frakt, order...', 'send' => 'Skicka' )
-    );
-
-    $lang_pack = isset($dictionary[$language]) ? $dictionary[$language] : $dictionary['en'];
-    $greetings = $lang_pack['greeting'];
-    $placeholder = $lang_pack['placeholder'];
-    $send_text = $lang_pack['send'];
-    
-    $header_style = "background-color: " . esc_attr( $color_theme ) . ";";
-    if ( ! empty( $header_image_url ) ) {
-        $header_style .= " background-image: url(" . esc_url( $header_image_url ) . "); background-size: cover; background-position: center;";
-    }
-    ?>
-    <div id="ax-woo-chat-wrapper">
-        <div id="ax-woo-chat-toggle" style="background-color: <?php echo esc_attr( $color_theme ); ?>;" onclick="axWooToggleChat()">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="white">
-                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
-            </svg>
-        </div>
-        <div id="ax-woo-chat-box">
-            <div id="ax-woo-chat-head" style="<?php echo esc_attr( $header_style ); ?>">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <?php if ( ! empty( $avatar_url ) ) : ?>
-                        <img src="<?php echo esc_url( $avatar_url ); ?>" id="ax-woo-chat-avatar" style="width: 28px; height: 28px; border-radius: 50%; object-fit: contain; background: transparent; display: block;" />
-                    <?php endif; ?>
-                    <span id="ax-woo-chat-title"><?php echo esc_html( $chat_title ); ?></span>
-                </div>
-                <span id="ax-woo-chat-close" onclick="axWooToggleChat()">&times;</span>
-            </div>
-            <div id="ax-woo-chat-logs">
-                <div class="ax-woo-msg ax-woo-bot"><?php echo esc_html( $greetings ); ?></div>
-                <?php
-                $q1 = get_option('axgaists_quick_question_1');
-                $q2 = get_option('axgaists_quick_question_2');
-                $q3 = get_option('axgaists_quick_question_3');
-                if ( ! empty( $q1 ) || ! empty( $q2 ) || ! empty( $q3 ) ) :
-                ?>
-                <div class="ax-quick-questions-container" style="display: flex; flex-direction: column; gap: 8px; margin: 10px 12px; align-items: flex-start;">
-                    <?php if ( ! empty( $q1 ) ) : ?>
-                        <button class="ax-quick-question-btn" onclick="axWooSendQuickQuestion(this)" style="background: rgba(255, 255, 255, 0.9); border: 1px solid <?php echo esc_attr( $color_theme ); ?>44; border-radius: 16px; padding: 6px 12px; font-size: 11px; color: #334155; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; max-width: 90%; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-weight: 500;"><?php echo esc_html( $q1 ); ?></button>
-                    <?php endif; ?>
-                    <?php if ( ! empty( $q2 ) ) : ?>
-                        <button class="ax-quick-question-btn" onclick="axWooSendQuickQuestion(this)" style="background: rgba(255, 255, 255, 0.9); border: 1px solid <?php echo esc_attr( $color_theme ); ?>44; border-radius: 16px; padding: 6px 12px; font-size: 11px; color: #334155; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; max-width: 90%; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-weight: 500;"><?php echo esc_html( $q2 ); ?></button>
-                    <?php endif; ?>
-                    <?php if ( ! empty( $q3 ) ) : ?>
-                        <button class="ax-quick-question-btn" onclick="axWooSendQuickQuestion(this)" style="background: rgba(255, 255, 255, 0.9); border: 1px solid <?php echo esc_attr( $color_theme ); ?>44; border-radius: 16px; padding: 6px 12px; font-size: 11px; color: #334155; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; max-width: 90%; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-weight: 500;"><?php echo esc_html( $q3 ); ?></button>
-                    <?php endif; ?>
-                </div>
-                <?php endif; ?>
-            </div>
-            <div id="ax-woo-chat-branding" style="display: none; text-align: center; padding: 5px 10px; font-size: 11px; background-color: #f8fafc; border-top: 1px solid #eaeaea; color: #64748b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;">
-                Powered by <a href="https://axelsson.graphics" target="_blank" style="color: <?php echo esc_attr( $color_theme ); ?>; font-weight: bold; text-decoration: none;" rel="noopener noreferrer">AxG AI</a>
-            </div>
-            <div id="ax-woo-chat-input-row">
-                <input type="text" id="ax-woo-chat-input" placeholder="<?php echo esc_attr($placeholder); ?>" onkeypress="if(event.key==='Enter') axWooSendMessage()">
-                <button id="ax-woo-chat-send" style="background-color: <?php echo esc_attr( $color_theme ); ?>;" onclick="axWooSendMessage()"><?php echo esc_html($send_text); ?></button>
-            </div>
-        </div>
-    </div>
-    <?php
-}
+// (Removed in v2: The chat widget HTML and Shadow DOM are now fully generated by assets/js/script.js)
 
 // --- Step 8: WP AJAX Message Handler ---
-add_action( 'wp_ajax_axgaists_chat_message', 'axgaists_handle_chat_message' );
-add_action( 'wp_ajax_nopriv_axgaists_chat_message', 'axgaists_handle_chat_message' );
+add_action( 'wp_ajax_axgai_woo_chat_message', 'axgai_woo_handle_chat_message' );
+add_action( 'wp_ajax_nopriv_axgai_woo_chat_message', 'axgai_woo_handle_chat_message' );
 
 /**
  * Attempt a secure, local, real-time WooCommerce order status lookup if the message
  * contains both a valid order ID and a matching billing email or billing phone number.
  */
-function axgaists_try_local_order_lookup( $message ) {
+function axgai_woo_try_local_order_lookup( $message ) {
     // 1. Extract email
     $email = '';
     if ( preg_match( '/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/', $message, $matches ) ) {
@@ -1079,7 +1021,7 @@ function axgaists_try_local_order_lookup( $message ) {
                     }
 
                     // Build Sweden/English response
-                    $language = get_option('axgaists_language', 'en');
+                    $language = get_option('axgai_woo_language', 'en');
                     if ( $language === 'sv' ) {
                         $reply = sprintf( "Tack! Jag har hittat din beställning **#%s**. Statusen är för närvarande: **%s**.", $order_id, $status_label );
                         if ( ! empty( $shipping_name ) ) {
@@ -1101,6 +1043,15 @@ function axgaists_try_local_order_lookup( $message ) {
                             $reply .= sprintf( "\n\nTracking Number: `%s`", $tracking_number );
                         }
                     }
+                    // Build structured JSON tracking data for the frontend v2 Widget Timeline to parse
+                    $tracking_data = array(
+                        'order_id'     => $order_id,
+                        'status'       => $status,
+                        'status_label' => $status_label,
+                        'tracking_url' => $tracking_url,
+                        'carrier'      => $carrier_name ? $carrier_name : $shipping_name,
+                    );
+                    $reply .= "\n\n:::order_tracking" . wp_json_encode( $tracking_data ) . ":::";
 
                     return $reply;
                 }
@@ -1111,8 +1062,8 @@ function axgaists_try_local_order_lookup( $message ) {
     return false;
 }
 
-function axgaists_handle_chat_message() {
-    check_ajax_referer( 'axgaists_chat_nonce', 'nonce' );
+function axgai_woo_handle_chat_message() {
+    check_ajax_referer( 'axgai_woo_chat_nonce', 'nonce' );
 
     $agent_id = sanitize_text_field( $_POST['agent_id'] );
     $message = sanitize_text_field( $_POST['message'] );
@@ -1121,18 +1072,24 @@ function axgaists_handle_chat_message() {
     $slug = sanitize_text_field( $_POST['slug'] );
     $contact_email = sanitize_email( $_POST['contact_email'] );
     $viewing_product = isset($_POST['viewing_product']) ? sanitize_text_field($_POST['viewing_product']) : '';
+    // Optional base64 image data for multimodal query
+    $image_base64 = isset($_POST['image_base64']) ? $_POST['image_base64'] : '';
 
     if ( ! $agent_id || ! $message ) {
         wp_send_json_error( 'Missing parameters.' );
     }
 
     // 1. Log the customer's message locally
-    axgaists_log_message( $session_id, 'user', $message );
+    $log_msg = $message;
+    if ( ! empty( $image_base64 ) ) {
+        $log_msg .= " [Image Attached]";
+    }
+    axgai_woo_log_message( $session_id, 'user', $log_msg );
 
     // 2. Intercept and attempt a secure, local real-time WooCommerce order status lookup
-    $local_order_status = axgaists_try_local_order_lookup( $message );
+    $local_order_status = axgai_woo_try_local_order_lookup( $message );
     if ( $local_order_status !== false ) {
-        axgaists_log_message( $session_id, 'bot', $local_order_status );
+        axgai_woo_log_message( $session_id, 'bot', $local_order_status );
         wp_send_json_success( array( 
             'reply'      => $local_order_status,
             'is_premium' => true // Local queries are always allowed and free!
@@ -1140,19 +1097,19 @@ function axgaists_handle_chat_message() {
     }
 
     // 2. Fetch the active WooCommerce Catalog summary
-    $catalog = axgaists_get_catalog();
+    $catalog = axgai_woo_get_catalog();
     $catalog_text = "Here is our current product catalog:\n";
     foreach ( $catalog as $p ) {
         $truncated_desc = function_exists('mb_substr') ? mb_substr($p['desc'], 0, 100, 'UTF-8') : substr($p['desc'], 0, 100);
-        $catalog_text .= "- {$p['title']} | Price: {$p['price']} | URL: {$p['url']} | Cat: " . implode(', ', $p['cat']) . " | Stock: {$p['stock']}\n  Details: " . $truncated_desc . "...\n";
+        $catalog_text .= "- {$p['title']} | Price: {$p['price']} | URL: {$p['url']} | Image: {$p['image']} | Cat: " . implode(', ', $p['cat']) . " | Stock: {$p['stock']}\n  Details: " . $truncated_desc . "...\n";
     }
 
     // 3. Assemble Bot Persona & Instructions
-    $persona = get_option('axgaists_persona', 'You are a warm, professional WooCommerce sales and customer support assistant. Help visitors find the best products, explain shipping, freight, and return policies, and assist with general store FAQs.');
+    $persona = get_option('axgai_woo_persona', 'You are a warm, professional WooCommerce sales and customer support assistant. Help visitors find the best products, explain shipping, freight, and return policies, and assist with general store FAQs.');
     
     // Retrieve custom contact info and opening hours directly from DB for maximum security & efficiency!
-    $contact_info = get_option('axgaists_contact_info', '');
-    $opening_hours = get_option('axgaists_opening_hours', '');
+    $contact_info = get_option('axgai_woo_contact_info', '');
+    $opening_hours = get_option('axgai_woo_opening_hours', '');
 
     // Check if user is currently looking at a product to give Gemini contextual guidance
     $viewing_context = "";
@@ -1161,24 +1118,30 @@ function axgaists_handle_chat_message() {
     }
 
     // 4. Relay securely to central Cloud Function proxy
+    $post_body = array(
+        'action'         => 'chat-proxy',
+        'agent_id'       => $agent_id,
+        'message'        => $message, // Pass raw user message
+        'session_id'     => $session_id,
+        'language'       => $language,
+        'slug'           => $slug,
+        'contact_email'  => $contact_email,
+        'contact_info'   => $contact_info,
+        'opening_hours'  => $opening_hours,
+        'is_woocommerce' => true,
+        'persona'        => $persona,
+        'viewing_product'=> $viewing_product,
+        'catalog_text'   => $catalog_text
+    );
+
+    if ( ! empty( $image_base64 ) ) {
+        $post_body['image_base64'] = $image_base64;
+    }
+
     $response = wp_remote_post( 'https://europe-west3-wp-vertex-chatbot.cloudfunctions.net/generate_demo_chatbot', array(
         'method'    => 'POST',
         'headers'   => array( 'Content-Type' => 'application/json' ),
-        'body'      => json_encode( array(
-            'action'         => 'chat-proxy',
-            'agent_id'       => $agent_id,
-            'message'        => $message, // Pass raw user message
-            'session_id'     => $session_id,
-            'language'       => $language,
-            'slug'           => $slug,
-            'contact_email'  => $contact_email,
-            'contact_info'   => $contact_info,
-            'opening_hours'  => $opening_hours,
-            'is_woocommerce' => true,
-            'persona'        => $persona,
-            'viewing_product'=> $viewing_product,
-            'catalog_text'   => $catalog_text
-        ) ),
+        'body'      => json_encode( $post_body ),
         'timeout'   => 20,
         'sslverify' => true, // Ensure secure connections in production
     ) );
@@ -1194,7 +1157,7 @@ function axgaists_handle_chat_message() {
     $is_premium = isset( $data['is_premium'] ) ? (bool)$data['is_premium'] : false;
 
     // 5. Log the bot's reply locally
-    axgaists_log_message( $session_id, 'bot', $reply );
+    axgai_woo_log_message( $session_id, 'bot', $reply );
 
     wp_send_json_success( array( 
         'reply'      => $reply,
@@ -1202,13 +1165,14 @@ function axgaists_handle_chat_message() {
     ) );
 }
 
-function axgaists_log_message( $session_id, $sender, $message ) {
+function axgai_woo_log_message( $session_id, $sender, $message ) {
     global $wpdb;
-    $table_name = $wpdb->prefix . 'axgaists_conversations';
+    $table_name = $wpdb->prefix . 'axgai_woo_conversations';
     
     // Self-healing: ensure custom database table exists (handles skipped activation hooks on files overwrite)
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
     if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table_name ) ) !== $table_name ) {
-        axgaists_activate_plugin();
+        axgai_woo_activate_plugin();
     }
 
     $wpdb->insert(
@@ -1223,30 +1187,30 @@ function axgaists_log_message( $session_id, $sender, $message ) {
     );
 }
 
-// --- Step 9: Shortcode Fallback [axgaists_chat] ---
-add_shortcode( 'axgaists_chat', 'axgaists_shortcode' );
+// --- Step 9: Shortcode Fallback [axgai_woo_chat] ---
+add_shortcode( 'axgai_woo_chat', 'axgai_woo_shortcode' );
 
-function axgaists_shortcode() {
+function axgai_woo_shortcode() {
     return ''; // Widget floats globally, shortcode is a compliant registration fallback.
 }
 
 // --- Step 10: Secure Live Order Status REST API Route ---
-add_action( 'rest_api_init', 'axgaists_register_order_status_route' );
+add_action( 'rest_api_init', 'axgai_woo_register_order_status_route' );
 
-function axgaists_register_order_status_route() {
+function axgai_woo_register_order_status_route() {
     register_rest_route( 'axg-woo-chatbot/v1', '/order-status', array(
         'methods'             => 'POST, GET',
-        'callback'            => 'axgaists_get_order_status_api',
-        'permission_callback' => 'axgaists_check_order_status_permissions', // Custom public permission callback to satisfy automated linters
+        'callback'            => 'axgai_woo_get_order_status_api',
+        'permission_callback' => 'axgai_woo_check_order_status_permissions', // Custom public permission callback to satisfy automated linters
     ) );
 }
 
-function axgaists_check_order_status_permissions() {
+function axgai_woo_check_order_status_permissions() {
     // This endpoint is intentionally public, but securely authenticated internally within the callback by strictly matching the Order ID against the corresponding Billing Email or Billing Phone parameters!
     return true;
 }
 
-function axgaists_get_order_status_api( $request ) {
+function axgai_woo_get_order_status_api( $request ) {
     $params = $request->get_json_params();
     if ( empty( $params ) ) {
         $params = $request->get_url_params();

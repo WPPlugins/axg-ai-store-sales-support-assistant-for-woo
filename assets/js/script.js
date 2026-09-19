@@ -1,410 +1,1446 @@
-/* 
- * AxG AI WooCommerce Chatbot & Product Recommender - Frontend Script
- * Stateful chat flows, localized quota-budget limits, and real-time page context mapping
+/**
+ * AxG Next-Gen Cloud AI Sales & Support Assistant Widget (v2.0-BETA)
+ * Developed by Axelsson Graphics
+ * 
+ * Features:
+ * - 100% Shadow DOM style encapsulation (zero CSS bleeding)
+ * - Visual Product Cards & Horizontal Swipe Carousel
+ * - 1-Click "Add to Cart" directly in chat (WooCommerce / Shopify)
+ * - Multimodal Mobile Camera & Photo Upload (Client-side 800px auto-compression)
+ * - Graphical Order Tracking Timeline (PostNord / DHL / DB Schenker)
+ * - Direct WhatsApp Click-to-Chat Integration
+ * - Mobile Virtual Keyboard Safe (Visual Viewport API)
  */
 
-// 1. Persistent Session ID via sessionStorage
-let axWooSid = sessionStorage.getItem('ax_woo_sid');
-if (!axWooSid) {
-    axWooSid = 'sess_woo_' + Math.random().toString(36).substring(2, 12);
-    sessionStorage.setItem('ax_woo_sid', axWooSid);
-}
+(function (window, document) {
+    'use strict';
 
-function axWooTriggerProactive(message) {
-    const box = document.getElementById('ax-woo-chat-box');
-    const wrapper = document.getElementById('ax-woo-chat-wrapper');
-    if (!box) return;
-    
-    // Check if chat is already open or already has messages to avoid interrupting
-    if (box.style.display === 'flex') return;
-    const history = JSON.parse(sessionStorage.getItem('ax_woo_chat_history') || '[]');
-    if (history.length > 0) return; // Don't interrupt existing conversation
+    if (window.AxgChatWidgetLoaded) return;
+    window.AxgChatWidgetLoaded = true;
 
-    // Open chat box
-    box.style.display = 'flex';
-    if (window.innerWidth <= 480) {
-        document.body.classList.add('ax-no-scroll');
-        if (wrapper) wrapper.classList.add('ax-active');
-        if (window.visualViewport) {
-            axWooAdjustViewport();
+    // Default configuration
+    const DEFAULT_CONFIG = {
+        agent_id: '',
+        slug: '',
+        title: 'AxG AI Assistant',
+        avatar: '',
+        theme_color: '#06b6d4',
+        language: 'sv',
+        api_url: 'https://europe-west3-wp-vertex-chatbot.cloudfunctions.net/generate_demo_chatbot',
+        ajax_url: '',
+        nonce: '',
+        whatsapp_number: '',
+        messenger_link: '',
+        contact_email: 'support@axelsson.graphics',
+        quick_questions: [],
+        cur_product: null,
+        is_woocommerce: true
+    };
+
+    class AxgChatWidget {
+        constructor(userConfig = {}) {
+            let pluginOpts = {};
+            if (window.axgai_woo_settings) {
+                pluginOpts = { ...window.axgai_woo_settings };
+                if (pluginOpts.chat_title) pluginOpts.title = pluginOpts.chat_title;
+                if (pluginOpts.color_theme) pluginOpts.theme_color = pluginOpts.color_theme;
+                if (pluginOpts.avatar_url) pluginOpts.avatar = pluginOpts.avatar_url;
+            }
+            this.config = Object.assign({}, DEFAULT_CONFIG, pluginOpts, window.AXG_WIDGET_CONFIG || {}, userConfig);
+            this.isOpen = false;
+            this.pendingImage = null; // { base64, previewUrl }
+            this.sessionId = this.getOrCreateSessionId();
+            this.history = this.loadHistory();
+            this.init();
         }
-    }
-    const input = document.getElementById('ax-woo-chat-input');
-    if (input) input.focus();
 
-    // Append and save the proactive greeting
-    axWooAppend(message, 'bot');
-}
+        getOrCreateSessionId() {
+            let sid = sessionStorage.getItem('axg_widget_sid');
+            if (!sid) {
+                sid = 'axg_s_' + Math.random().toString(36).substring(2, 12) + '_' + Date.now();
+                sessionStorage.setItem('axg_widget_sid', sid);
+            }
+            return sid;
+        }
 
-// 2. Initialize and Restore Chat History on DOMContentLoaded
-document.addEventListener('DOMContentLoaded', () => {
-    // Register Visual Viewport resize handlers for mobile virtual keyboards
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', axWooAdjustViewport);
-        window.visualViewport.addEventListener('scroll', axWooAdjustViewport);
-    }
+        loadHistory() {
+            try {
+                return JSON.parse(sessionStorage.getItem('axg_chat_history') || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
 
-    // Check premium state from localStorage and toggle branding
-    const isPremium = localStorage.getItem('ax_woo_is_premium') === '1';
-    const branding = document.getElementById('ax-woo-chat-branding');
-    if (branding) {
-        branding.style.display = isPremium ? 'none' : 'block';
-    }
+        saveHistory() {
+            try {
+                if (this.history.length > 50) this.history = this.history.slice(-50);
+                sessionStorage.setItem('axg_chat_history', JSON.stringify(this.history));
+            } catch (e) {}
+        }
 
-    const history = JSON.parse(sessionStorage.getItem('ax_woo_chat_history') || '[]');
-    if (history.length > 0) {
-        const logs = document.getElementById('ax-woo-chat-logs');
-        if (logs) {
-            logs.innerHTML = ''; // Clear default greeting
-            history.forEach(msg => {
-                axWooAppend(msg.text, msg.sender, false);
+        init() {
+            // Create root container
+            this.container = document.createElement('div');
+            this.container.id = 'axg-cloud-widget-root';
+            document.body.appendChild(this.container);
+
+            // Attach Shadow DOM for 100% CSS encapsulation
+            this.shadow = this.container.attachShadow({ mode: 'open' });
+
+            // Inject CSS and HTML structure
+            this.shadow.innerHTML = this.getStyles() + this.getTemplate();
+
+            // Cache DOM elements inside shadow
+            this.bubble = this.shadow.getElementById('axg-bubble');
+            this.window = this.shadow.getElementById('axg-window');
+            this.messagesContainer = this.shadow.getElementById('axg-messages');
+            this.input = this.shadow.getElementById('axg-input');
+            this.sendBtn = this.shadow.getElementById('axg-send-btn');
+            this.cameraBtn = this.shadow.getElementById('axg-camera-btn');
+            this.fileInput = this.shadow.getElementById('axg-file-input');
+            this.imagePreviewBar = this.shadow.getElementById('axg-image-preview-bar');
+            this.imagePreviewImg = this.shadow.getElementById('axg-image-preview-img');
+            this.imagePreviewCancel = this.shadow.getElementById('axg-image-preview-cancel');
+            this.closeBtn = this.shadow.getElementById('axg-close-btn');
+            this.waBtn = this.shadow.getElementById('axg-header-whatsapp');
+            this.msgBtn = this.shadow.getElementById('axg-header-messenger');
+
+            this.bindEvents();
+            this.renderHistoryOrGreeting();
+            this.checkExitIntent();
+        }
+
+        getTranslations() {
+            const lang = this.config.language || 'sv';
+            const dict = {
+                sv: {
+                    placeholder: 'Ställ en fråga eller fota en produkt...',
+                    greeting: 'Hej! 👋 Hur kan jag hjälpa dig idag? Fråga mig om produkter, storlekar eller din order.',
+                    powered: 'Drivs av',
+                    online: 'Svarar direkt',
+                    send: 'Skicka',
+                    whatsapp_tooltip: 'Fortsätt chatten i WhatsApp',
+                    messenger_tooltip: 'Fortsätt chatten i Messenger',
+                    order_status_title: 'Orderstatus',
+                    order_received: 'Mottagen',
+                    order_processing: 'Packas',
+                    order_shipped: 'Skickad',
+                    track_button: 'Spåra paket 📦',
+                    add_to_cart: 'Lägg i varukorg',
+                    added: '✓ Tillagd i varukorg!',
+                    error_conn: 'Kunde inte nå assistenten. Försök igen om en stund.'
+                },
+                en: {
+                    placeholder: 'Ask a question or snap a photo...',
+                    greeting: 'Hello! 👋 How can I help you today? Ask about products, sizes or your order.',
+                    powered: 'Powered by',
+                    online: 'Replies instantly',
+                    send: 'Send',
+                    whatsapp_tooltip: 'Continue in WhatsApp',
+                    messenger_tooltip: 'Continue in Messenger',
+                    order_status_title: 'Order Status',
+                    order_received: 'Received',
+                    order_processing: 'Processing',
+                    order_shipped: 'Shipped',
+                    track_button: 'Track package 📦',
+                    add_to_cart: 'Add to cart',
+                    added: '✓ Added to cart!',
+                    error_conn: 'Could not connect to assistant. Please try again.'
+                },
+                de: {
+                    placeholder: 'Frage stellen oder Foto machen...',
+                    greeting: 'Hallo! 👋 Wie kann ich Ihnen heute helfen? Fragen Sie nach Produkten oder Ihrer Bestellung.',
+                    powered: 'Unterstützt von',
+                    online: 'Antwortet sofort',
+                    send: 'Senden',
+                    whatsapp_tooltip: 'In WhatsApp fortsetzen',
+                    messenger_tooltip: 'In Messenger fortsetzen',
+                    order_status_title: 'Bestellstatus',
+                    order_received: 'Eingegangen',
+                    order_processing: 'In Bearbeitung',
+                    order_shipped: 'Versandt',
+                    track_button: 'Paket verfolgen 📦',
+                    add_to_cart: 'In den Warenkorb',
+                    added: '✓ Hinzugefügt!',
+                    error_conn: 'Verbindungsfehler. Bitte versuchen Sie es später noch einmal.'
+                }
+            };
+            return dict[lang] || dict.en;
+        }
+
+        getStyles() {
+            const color = this.config.theme_color || '#06b6d4';
+            return `
+            <style>
+                :host {
+                    all: initial;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    color: #1e293b;
+                    box-sizing: border-box;
+                    z-index: 9999999;
+                }
+                *, *:before, *:after { box-sizing: border-box; }
+
+                /* Floating Bubble */
+                #axg-bubble {
+                    position: fixed;
+                    bottom: 24px;
+                    right: 24px;
+                    width: 60px;
+                    height: 60px;
+                    border-radius: 50%;
+                    background: ${color};
+                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0,0,0,0.1);
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #ffffff;
+                    transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
+                    z-index: 9999999;
+                }
+                #axg-bubble:hover {
+                    transform: scale(1.08);
+                    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+                }
+                #axg-bubble svg { width: 30px; height: 30px; fill: currentColor; }
+
+                /* Chat Window Container */
+                #axg-window {
+                    position: fixed;
+                    bottom: 96px;
+                    right: 24px;
+                    width: 390px;
+                    max-width: calc(100vw - 32px);
+                    height: 600px;
+                    max-height: calc(100vh - 120px);
+                    background: #ffffff;
+                    border-radius: 20px;
+                    box-shadow: 0 16px 48px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.06);
+                    display: none;
+                    flex-direction: column;
+                    overflow: hidden;
+                    z-index: 9999999;
+                    animation: axgFadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                }
+                @keyframes axgFadeUp {
+                    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
+                }
+
+                /* Mobile Fullscreen Mode */
+                @media (max-width: 480px) {
+                    #axg-window {
+                        bottom: 0 !important;
+                        right: 0 !important;
+                        width: 100vw !important;
+                        max-width: 100vw !important;
+                        height: 100% !important;
+                        max-height: 100% !important;
+                        border-radius: 0 !important;
+                    }
+                    #axg-bubble {
+                        bottom: 16px;
+                        right: 16px;
+                    }
+                }
+
+                /* Header */
+                .axg-header {
+                    background: linear-gradient(135deg, ${color}, #0f172a);
+                    color: #ffffff;
+                    padding: 16px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    border-top-left-radius: 20px;
+                    border-top-right-radius: 20px;
+                }
+                @media (max-width: 480px) {
+                    .axg-header { border-radius: 0; }
+                }
+                .axg-header-left { display: flex; align-items: center; gap: 12px; }
+                .axg-avatar {
+                    width: 38px;
+                    height: 38px;
+                    border-radius: 50%;
+                    background: rgba(255, 255, 255, 0.2);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 18px;
+                    overflow: hidden;
+                }
+                .axg-avatar img { width: 100%; height: 100%; object-fit: cover; }
+                .axg-title-wrap { display: flex; flex-direction: column; }
+                .axg-title { font-weight: 700; font-size: 15px; letter-spacing: -0.2px; }
+                .axg-status { font-size: 11px; opacity: 0.9; display: flex; align-items: center; gap: 5px; }
+                .axg-status-dot { width: 7px; height: 7px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 8px #22c55e; }
+                .axg-header-actions { display: flex; align-items: center; gap: 8px; }
+                .axg-icon-btn {
+                    background: rgba(255, 255, 255, 0.15);
+                    border: none;
+                    color: #ffffff;
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: background 0.2s;
+                }
+                .axg-icon-btn:hover { background: rgba(255, 255, 255, 0.3); }
+                .axg-icon-btn svg { width: 18px; height: 18px; fill: currentColor; }
+                .axg-wa-header-btn { background: #25D366 !important; }
+                .axg-wa-header-btn:hover { background: #20ba59 !important; }
+
+                /* Messages Body */
+                .axg-messages {
+                    flex: 1;
+                    padding: 16px;
+                    overflow-y: auto;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    background: #f8fafc;
+                }
+
+                /* Quick Questions Pill Bar */
+                .axg-quick-bar {
+                    display: flex;
+                    gap: 8px;
+                    overflow-x: auto;
+                    padding-bottom: 4px;
+                    scrollbar-width: none;
+                }
+                .axg-quick-bar::-webkit-scrollbar { display: none; }
+                .axg-quick-pill {
+                    background: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 16px;
+                    padding: 6px 12px;
+                    font-size: 12px;
+                    color: #334155;
+                    white-space: nowrap;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+                }
+                .axg-quick-pill:hover {
+                    background: #f1f5f9;
+                    border-color: ${color};
+                    color: ${color};
+                }
+
+                /* Message Bubbles */
+                .axg-msg {
+                    max-width: 85%;
+                    padding: 12px 15px;
+                    border-radius: 16px;
+                    font-size: 13.5px;
+                    line-height: 1.45;
+                    word-break: break-word;
+                    min-width: 0;
+                }
+                .axg-msg.axg-has-carousel {
+                    max-width: 100% !important;
+                    width: 100% !important;
+                    box-sizing: border-box;
+                    padding: 12px 10px 14px 10px;
+                }
+                .axg-msg-bot {
+                    align-self: flex-start;
+                    background: #ffffff;
+                    color: #0f172a;
+                    border: 1px solid #e2e8f0;
+                    border-bottom-left-radius: 4px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+                }
+                .axg-msg-user {
+                    align-self: flex-end;
+                    background: ${color};
+                    color: #ffffff;
+                    border-bottom-right-radius: 4px;
+                }
+                .axg-msg-user a { color: #ffffff !important; text-decoration: underline; }
+                .axg-msg-bot a { color: ${color}; font-weight: 600; text-decoration: underline; }
+                .axg-msg-img-user {
+                    max-width: 100%;
+                    max-height: 180px;
+                    border-radius: 12px;
+                    margin-bottom: 6px;
+                    display: block;
+                }
+
+                /* Typing Indicator */
+                .axg-typing {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    padding: 10px 14px;
+                    background: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 16px;
+                    border-bottom-left-radius: 4px;
+                    width: fit-content;
+                }
+                .axg-typing-dot {
+                    width: 6px;
+                    height: 6px;
+                    background: #94a3b8;
+                    border-radius: 50%;
+                    animation: axgBlink 1.4s infinite both;
+                }
+                .axg-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+                .axg-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+                @keyframes axgBlink {
+                    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+                    40% { opacity: 1; transform: scale(1.1); }
+                }
+
+                /* Product Carousel & Cards */
+                .axg-carousel-wrapper {
+                    position: relative;
+                    width: 100%;
+                    margin-top: 10px;
+                }
+                .axg-carousel {
+                    display: flex;
+                    gap: 16px;
+                    overflow-x: auto;
+                    overflow-y: hidden;
+                    padding: 6px 4px 12px 4px;
+                    scroll-snap-type: x mandatory;
+                    scrollbar-width: thin;
+                    scrollbar-color: #cbd5e1 #f1f5f9;
+                    cursor: grab;
+                    user-select: none;
+                    -webkit-overflow-scrolling: touch;
+                    scroll-behavior: smooth;
+                    scroll-padding: 0 5%;
+                }
+                .axg-carousel.axg-grabbing {
+                    cursor: grabbing;
+                    scroll-behavior: auto;
+                    scroll-snap-type: none;
+                }
+                .axg-carousel::-webkit-scrollbar {
+                    height: 6px;
+                    display: block;
+                }
+                .axg-carousel::-webkit-scrollbar-track {
+                    background: #f1f5f9;
+                    border-radius: 4px;
+                }
+                .axg-carousel::-webkit-scrollbar-thumb {
+                    background: #cbd5e1;
+                    border-radius: 4px;
+                }
+                .axg-carousel::-webkit-scrollbar-thumb:hover {
+                    background: #94a3b8;
+                }
+
+                /* Nav arrows for Carousel */
+                .axg-carousel-nav {
+                    position: absolute;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    background: #ffffff;
+                    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.08);
+                    border: none;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    z-index: 10;
+                    color: #0f172a;
+                    transition: all 0.2s;
+                    opacity: 0.95;
+                }
+                .axg-carousel-nav:hover {
+                    opacity: 1;
+                    transform: translateY(-50%) scale(1.08);
+                    background: #f8fafc;
+                }
+                .axg-carousel-nav.prev {
+                    left: -8px;
+                }
+                .axg-carousel-nav.next {
+                    right: -8px;
+                }
+                .axg-carousel-nav.hidden {
+                    display: none;
+                }
+                .axg-carousel-nav svg {
+                    width: 18px;
+                    height: 18px;
+                    fill: currentColor;
+                }
+                .axg-product-card {
+                    flex: 0 0 calc(100% - 32px);
+                    scroll-snap-align: center;
+                    background: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 14px;
+                    overflow: hidden;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                    display: flex;
+                    flex-direction: column;
+                    transition: transform 0.2s;
+                }
+                .axg-product-card:hover { transform: translateY(-2px); }
+                .axg-card-img {
+                    width: 100%;
+                    height: 125px;
+                    object-fit: contain;
+                    background: #ffffff;
+                    pointer-events: none;
+                }
+                .axg-card-body {
+                    padding: 10px 12px;
+                    display: flex;
+                    flex-direction: column;
+                    flex: 1;
+                    justify-content: space-between;
+                }
+                .axg-card-title {
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    margin-bottom: 4px;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                    text-decoration: none;
+                }
+                .axg-card-price {
+                    font-size: 14px;
+                    font-weight: 800;
+                    color: ${color};
+                    margin-bottom: 8px;
+                }
+                .axg-card-btn {
+                    background: ${color};
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 8px 10px;
+                    font-size: 12px;
+                    font-weight: 700;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                    cursor: pointer;
+                    transition: filter 0.2s;
+                }
+                .axg-card-btn:hover { filter: brightness(0.9); }
+                .axg-card-btn.axg-btn-loading { opacity: 0.7; pointer-events: none; }
+                .axg-card-btn.axg-btn-success { background: #10b981 !important; }
+                .axg-card-btn.axg-btn-added {
+                    background: #22c55e !important;
+                    color: #ffffff !important;
+                }
+
+                /* Graphical Order Tracking Card */
+                .axg-tracking-card {
+                    background: #ffffff;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 14px;
+                    padding: 14px;
+                    margin-top: 6px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+                }
+                .axg-track-header {
+                    font-weight: 700;
+                    font-size: 14px;
+                    margin-bottom: 12px;
+                    display: flex;
+                    justify-content: space-between;
+                }
+                .axg-timeline {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    position: relative;
+                    margin: 16px 8px 16px 8px;
+                }
+                .axg-timeline:before {
+                    content: '';
+                    position: absolute;
+                    top: 12px;
+                    left: 0;
+                    right: 0;
+                    height: 3px;
+                    background: #e2e8f0;
+                    z-index: 1;
+                }
+                .axg-timeline-step {
+                    position: relative;
+                    z-index: 2;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 4px;
+                }
+                .axg-step-node {
+                    width: 26px;
+                    height: 26px;
+                    border-radius: 50%;
+                    background: #e2e8f0;
+                    color: #64748b;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 12px;
+                    font-weight: 700;
+                }
+                .axg-step-active .axg-step-node {
+                    background: #22c55e;
+                    color: #ffffff;
+                    box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+                }
+                .axg-step-label { font-size: 10.5px; font-weight: 600; color: #64748b; }
+                .axg-track-action {
+                    display: block;
+                    background: #0f172a;
+                    color: #ffffff;
+                    text-decoration: none;
+                    text-align: center;
+                    padding: 8px 12px;
+                    border-radius: 8px;
+                    font-size: 12.5px;
+                    font-weight: 700;
+                    margin-top: 10px;
+                    transition: background 0.2s;
+                }
+                .axg-track-action:hover { background: #334155; }
+
+                /* Footer Input Bar */
+                .axg-footer {
+                    background: #ffffff;
+                    border-top: 1px solid #e2e8f0;
+                    padding: 10px 14px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                .axg-image-preview-bar {
+                    display: none;
+                    align-items: center;
+                    justify-content: space-between;
+                    background: #f1f5f9;
+                    border-radius: 8px;
+                    padding: 4px 8px;
+                }
+                .axg-preview-thumb {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 6px;
+                    object-fit: cover;
+                }
+                .axg-input-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .axg-input {
+                    flex: 1;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 24px;
+                    padding: 10px 16px;
+                    font-size: 13.5px;
+                    outline: none;
+                    background: #f8fafc;
+                    transition: border 0.2s, background 0.2s;
+                }
+                .axg-input:focus {
+                    border-color: ${color};
+                    background: #ffffff;
+                }
+                .axg-action-btn {
+                    background: none;
+                    border: none;
+                    width: 38px;
+                    height: 38px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #64748b;
+                    transition: all 0.2s;
+                }
+                .axg-action-btn:hover { background: #f1f5f9; color: ${color}; }
+                .axg-send-btn {
+                    background: ${color};
+                    color: #ffffff;
+                }
+                .axg-send-btn:hover { background: ${color}; filter: brightness(1.1); color: #ffffff; }
+                .axg-send-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+                /* Branding */
+                .axg-branding {
+                    text-align: center;
+                    font-size: 10.5px;
+                    color: #94a3b8;
+                    margin-top: 2px;
+                }
+                .axg-branding a { color: #64748b; text-decoration: none; font-weight: 600; }
+            </style>
+            `;
+        }
+
+        getTemplate() {
+            const t = this.getTranslations();
+            const waNumber = this.config.whatsapp_number ? this.config.whatsapp_number.replace(/[^0-9]/g, '') : '';
+const msgLink = this.config.messenger_link || '';
+            const msgButtonHtml = msgLink ? `
+                <button id="axg-header-messenger" class="axg-icon-btn axg-wa-header-btn" title="${t.messenger_tooltip}">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.36 2 2 6.13 2 11.75c0 3.1 1.54 5.86 3.96 7.64v3.3L8.85 21.2a10.63 10.63 0 0 0 3.15.48c5.64 0 10-4.13 10-9.75S17.64 2 12 2zm1.09 13.91l-2.8-3-5.26 3 5.76-6.14 2.92 3.01 5.12-3.02-5.74 6.15z"/></svg>
+                </button>
+            ` : '';
+
+            const waButtonHtml = waNumber ? `
+                <button id="axg-header-whatsapp" class="axg-icon-btn axg-wa-header-btn" title="${t.whatsapp_tooltip}">
+                    <svg viewBox="0 0 24 24"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 17.8c-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.816 8.816 0 0 1-1.35-4.82c0-4.86 3.96-8.82 8.83-8.82 2.36 0 4.58.92 6.25 2.59a8.777 8.777 0 0 1 2.58 6.24c-.01 4.87-3.97 8.83-8.84 8.83zm4.84-6.61c-.27-.13-1.57-.77-1.81-.86-.24-.09-.42-.13-.59.13-.18.27-.69.86-.84 1.04-.15.18-.31.2-.58.07-.27-.13-1.14-.42-2.18-1.34-.81-.72-1.35-1.61-1.51-1.88-.16-.27-.02-.41.12-.55.12-.12.27-.31.4-.47.13-.15.18-.27.27-.44.09-.18.04-.34-.02-.47-.07-.13-.59-1.43-.81-1.96-.21-.51-.43-.44-.59-.45h-.51c-.18 0-.47.07-.71.34s-.94.92-.94 2.25c0 1.32.96 2.6 1.1 2.78.13.18 1.89 2.89 4.58 4.05.64.28 1.14.44 1.53.57.64.2 1.23.18 1.69.11.52-.08 1.57-.64 1.79-1.26.22-.62.22-1.16.15-1.27-.06-.12-.24-.19-.51-.32z"/></svg>
+                </button>
+            ` : '';
+
+            return `
+            <!-- Floating Bubble -->
+            <div id="axg-bubble" role="button" aria-label="Open chat assistant">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+            </div>
+
+            <!-- Chat Window -->
+            <div id="axg-window">
+                <!-- Header -->
+                <div class="axg-header">
+                    <div class="axg-header-left">
+                        <div class="axg-avatar">
+                            ${this.config.avatar ? `<img src="${this.config.avatar}" alt="Avatar">` : '🤖'}
+                        </div>
+                        <div class="axg-title-wrap">
+                            <span class="axg-title">${this.config.title}</span>
+                            <span class="axg-status">
+                                <span class="axg-status-dot"></span>
+                                ${t.online}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="axg-header-actions">
+                        ${msgButtonHtml}
+                        ${waButtonHtml}
+                        <button id="axg-close-btn" class="axg-icon-btn" title="Close">
+                            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div id="axg-messages" class="axg-messages"></div>
+
+                <!-- Footer Input Area -->
+                <div class="axg-footer">
+                    <!-- Image Preview Bar (Shown when camera snapped a photo) -->
+                    <div id="axg-image-preview-bar" class="axg-image-preview-bar">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <img id="axg-image-preview-img" class="axg-preview-thumb" src="" alt="Selected photo">
+                            <span style="font-size:12px; color:#475569; font-weight:600;">Foto bifogat</span>
+                        </div>
+                        <button id="axg-image-preview-cancel" class="axg-icon-btn" style="color:#ef4444; width:26px; height:26px;">
+                            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="axg-input-row">
+                        <!-- Camera / Photo Upload Button -->
+                        ${this.config.enable_image_upload ? `
+                        <button id="axg-camera-btn" class="axg-action-btn" title="Fota eller ladda upp bild">
+                            <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.65 0-3 1.35-3 3s1.35 3 3 3 3-1.35 3-3-1.35-3-3-3z"/></svg>
+                        </button>
+                        <input type="file" id="axg-file-input" accept="image/*" style="display:none;">
+                        ` : ''}
+
+                        <input type="text" id="axg-input" class="axg-input" placeholder="${t.placeholder}">
+
+                        <button id="axg-send-btn" class="axg-action-btn axg-send-btn" title="${t.send}">
+                            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="axg-branding">
+                        ${t.powered} <a href="https://axelsson.graphics" target="_blank" rel="noopener">AxG AI</a>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+
+        bindEvents() {
+            // Toggle open / close
+            this.bubble.addEventListener('click', () => this.toggle());
+            this.closeBtn.addEventListener('click', () => this.toggle(false));
+
+            // Send message on Enter
+            this.input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
+            });
+            this.sendBtn.addEventListener('click', () => this.sendMessage());
+
+            // Camera file input click
+            if (this.cameraBtn) {
+                this.cameraBtn.addEventListener('click', () => {
+                    this.fileInput.click();
+                });
+            }
+
+            // Camera file change handler (Downscale to 800px)
+            if (this.fileInput) {
+                this.fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file) return;
+                    this.compressAndSetImage(file);
+                });
+            }
+
+            // Cancel image preview
+            this.imagePreviewCancel.addEventListener('click', () => {
+                this.clearPendingImage();
+            });
+
+            // WhatsApp button click in header
+            if (this.waBtn) {
+                this.waBtn.addEventListener('click', () => {
+                    this.openWhatsApp();
+                });
+            }
+
+// Messenger button click in header
+            if (this.msgBtn) {
+                this.msgBtn.addEventListener('click', () => {
+                    this.openMessenger();
+                });
+            }
+            // Mobile visualViewport handling
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', () => {
+                    if (this.isOpen && window.innerWidth <= 480) {
+                        this.window.style.height = `${window.visualViewport.height}px`;
+                    }
+                });
+            }
+        }
+
+        toggle(forceState) {
+            this.isOpen = typeof forceState === 'boolean' ? forceState : !this.isOpen;
+            this.window.style.display = this.isOpen ? 'flex' : 'none';
+            if (this.isOpen) {
+                this.scrollToBottom();
+                setTimeout(() => this.input.focus(), 100);
+            }
+        }
+
+        compressAndSetImage(file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const maxDim = 800; // Optimal 800px resolution for Gemini 2.5 Flash
+
+                    if (width > height && width > maxDim) {
+                        height = Math.round((height * maxDim) / width);
+                        width = maxDim;
+                    } else if (height > maxDim) {
+                        width = Math.round((width * maxDim) / height);
+                        height = maxDim;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                    this.pendingImage = {
+                        base64: compressedBase64,
+                        previewUrl: compressedBase64
+                    };
+
+                    this.imagePreviewImg.src = compressedBase64;
+                    this.imagePreviewBar.style.display = 'flex';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        clearPendingImage() {
+            this.pendingImage = null;
+            this.fileInput.value = '';
+            this.imagePreviewBar.style.display = 'none';
+            this.imagePreviewImg.src = '';
+        }
+
+        renderHistoryOrGreeting() {
+            this.messagesContainer.innerHTML = '';
+            const t = this.getTranslations();
+
+            // Render Quick Questions if available
+            if (this.config.quick_questions && this.config.quick_questions.length > 0) {
+                const bar = document.createElement('div');
+                bar.className = 'axg-quick-bar';
+                this.config.quick_questions.forEach(q => {
+                    if (!q) return;
+                    const pill = document.createElement('div');
+                    pill.className = 'axg-quick-pill';
+                    pill.textContent = q;
+                    pill.addEventListener('click', () => {
+                        this.input.value = q;
+                        this.sendMessage();
+                    });
+                    bar.appendChild(pill);
+                });
+                this.messagesContainer.appendChild(bar);
+            }
+
+            if (this.history.length > 0) {
+                this.history.forEach(item => {
+                    this.appendMessage(item.text, item.sender, item.image, false);
+                });
+            } else {
+                // Default greeting
+                let greetingText = t.greeting;
+                if (this.config.cur_product) {
+                    greetingText = `Jag ser att du tittar på **${this.config.cur_product.title}** (${this.config.cur_product.price}). Kan jag hjälpa dig med storlek, passform eller leverans?`;
+                }
+                this.appendMessage(greetingText, 'bot', null, true);
+            }
+        }
+
+        appendMessage(text, sender, imageBase64 = null, save = true) {
+            const div = document.createElement('div');
+            div.className = `axg-msg axg-msg-${sender}`;
+
+            // If user attached an image, display it inside message bubble
+            if (imageBase64) {
+                const imgNode = document.createElement('img');
+                imgNode.src = imageBase64;
+                imgNode.className = 'axg-msg-img-user';
+                div.appendChild(imgNode);
+            }
+
+            // Parse Structured formats (Products, Order tracking, Markdown)
+            const parsedNodes = this.parseContent(text);
+            if (parsedNodes.classList.contains('axg-has-carousel')) {
+                div.classList.add('axg-has-carousel');
+            }
+            div.appendChild(parsedNodes);
+
+            this.messagesContainer.appendChild(div);
+            this.scrollToBottom();
+
+            if (save) {
+                this.history.push({ text, sender, image: imageBase64 });
+                this.saveHistory();
+            }
+        }
+
+        showTyping() {
+            const typing = document.createElement('div');
+            typing.id = 'axg-typing-indicator';
+            typing.className = 'axg-typing';
+            typing.innerHTML = '<div class="axg-typing-dot"></div><div class="axg-typing-dot"></div><div class="axg-typing-dot"></div>';
+            this.messagesContainer.appendChild(typing);
+            this.scrollToBottom();
+        }
+
+        hideTyping() {
+            const el = this.shadow.getElementById('axg-typing-indicator');
+            if (el) el.remove();
+        }
+
+        scrollToBottom() {
+            setTimeout(() => {
+                this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            }, 30);
+        }
+
+        parseContent(rawText) {
+            const container = document.createElement('div');
+            if (!rawText) return container;
+
+            let text = rawText;
+
+            // 1. Check for Structured Order Tracking: :::order_tracking{...}:::
+            const trackingRegex = /:::order_tracking(\{[\s\S]*?\}):::/g;
+            let trackingMatch = trackingRegex.exec(text);
+            let trackingCard = null;
+            if (trackingMatch) {
+                try {
+                    const trackData = JSON.parse(trackingMatch[1]);
+                    trackingCard = this.renderTrackingCard(trackData);
+                    text = text.replace(trackingMatch[0], '');
+                } catch (e) {
+                    console.warn('Failed to parse order tracking JSON:', e);
+                }
+            }
+
+            // 2. Check for Structured Products: :::product{...}:::
+            const productRegex = /:::product(\{[\s\S]*?\}):::/g;
+            const productList = [];
+            let pMatch;
+            while ((pMatch = productRegex.exec(text)) !== null) {
+                try {
+                    const pData = JSON.parse(pMatch[1]);
+                    productList.push(pData);
+                } catch (e) {}
+            }
+            // Strip products and collapse excessive newlines left behind
+            text = text.replace(productRegex, '').replace(/(\n\s*){3,}/g, '\n\n').trim();
+
+            // 3. Render clean Markdown text
+            const textSpan = document.createElement('span');
+            textSpan.innerHTML = this.markdownToHtml(text);
+            container.appendChild(textSpan);
+
+            // 4. Render Product Carousel if products were detected
+            if (productList.length > 0) {
+                container.classList.add('axg-has-carousel');
+                const carouselWrap = this.renderProductCarousel(productList);
+                container.appendChild(carouselWrap);
+            }
+
+            // 5. Append Tracking Card if detected
+            if (trackingCard) {
+                container.appendChild(trackingCard);
+            }
+
+            return container;
+        }
+
+        renderProductCarousel(productList) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'axg-carousel-wrapper';
+
+            const carousel = document.createElement('div');
+            carousel.className = 'axg-carousel';
+
+            productList.forEach(prod => {
+                carousel.appendChild(this.renderProductCard(prod));
+            });
+
+            // Prev & Next navigation buttons
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'axg-carousel-nav prev hidden';
+            prevBtn.setAttribute('type', 'button');
+            prevBtn.setAttribute('aria-label', 'Föregående produkt');
+            prevBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>';
+
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'axg-carousel-nav next';
+            nextBtn.setAttribute('type', 'button');
+            nextBtn.setAttribute('aria-label', 'Nästa produkt');
+            nextBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
+
+            const updateNavState = () => {
+                const maxScroll = carousel.scrollWidth - carousel.clientWidth;
+                if (maxScroll <= 4) {
+                    prevBtn.classList.add('hidden');
+                    nextBtn.classList.add('hidden');
+                    return;
+                }
+                if (carousel.scrollLeft <= 6) {
+                    prevBtn.classList.add('hidden');
+                } else {
+                    prevBtn.classList.remove('hidden');
+                }
+                if (carousel.scrollLeft >= maxScroll - 6) {
+                    nextBtn.classList.add('hidden');
+                } else {
+                    nextBtn.classList.remove('hidden');
+                }
+            };
+
+            prevBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                carousel.scrollBy({ left: -carousel.clientWidth, behavior: 'smooth' });
+                setTimeout(updateNavState, 250);
+            });
+
+            nextBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                carousel.scrollBy({ left: carousel.clientWidth, behavior: 'smooth' });
+                setTimeout(updateNavState, 250);
+            });
+
+            carousel.addEventListener('scroll', updateNavState, { passive: true });
+
+            // 1. Mouse Wheel Translation (vertical wheel over carousel scrolls horizontally)
+            carousel.addEventListener('wheel', (e) => {
+                if (carousel.scrollWidth > carousel.clientWidth) {
+                    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                        carousel.scrollLeft += e.deltaY;
+                        e.preventDefault();
+                        updateNavState();
+                    }
+                }
+            }, { passive: false });
+
+            // 2. Mouse Grab-and-Drag
+            let isDown = false;
+            let startX = 0;
+            let scrollStart = 0;
+            let hasDragged = false;
+
+            carousel.addEventListener('mousedown', (e) => {
+                if (e.target.closest('button') || e.target.closest('a')) return;
+                isDown = true;
+                hasDragged = false;
+                carousel.classList.add('axg-grabbing');
+                startX = e.pageX - carousel.offsetLeft;
+                scrollStart = carousel.scrollLeft;
+            });
+
+            const stopDrag = () => {
+                if (!isDown) return;
+                isDown = false;
+                carousel.classList.remove('axg-grabbing');
+                updateNavState();
+                setTimeout(() => { hasDragged = false; }, 60);
+            };
+
+            window.addEventListener('mouseup', stopDrag);
+
+            carousel.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - carousel.offsetLeft;
+                const walk = (x - startX) * 1.5;
+                if (Math.abs(walk) > 4) hasDragged = true;
+                carousel.scrollLeft = scrollStart - walk;
+            });
+
+            // Prevent link/button clicks if user was actively dragging
+            carousel.addEventListener('click', (e) => {
+                if (hasDragged && (e.target.closest('a') || e.target.closest('.axg-card-btn'))) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true);
+
+            wrapper.appendChild(prevBtn);
+            wrapper.appendChild(carousel);
+            wrapper.appendChild(nextBtn);
+
+            // Update nav state after images load or elements render
+            setTimeout(updateNavState, 150);
+            setTimeout(updateNavState, 500);
+
+            return wrapper;
+        }
+
+        renderProductCard(prod) {
+            const card = document.createElement('div');
+            card.className = 'axg-product-card';
+            const t = this.getTranslations();
+
+            const fallbackImg = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22 style=%22background:%23f1f5f9%22%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22sans-serif%22 font-size=%2214px%22 fill=%22%2364748b%22%3EBild saknas%3C/text%3E%3C/svg%3E";
+            const imgUrl = prod.image || prod.image_url || prod.thumbnail || fallbackImg;
+            const priceStr = prod.price || '';
+            const prodUrl = prod.url || '#';
+            const prodId = prod.id || '';
+
+            card.innerHTML = `
+                <img src="${imgUrl}" class="axg-card-img" alt="${prod.title}" loading="lazy" onerror="this.onerror=null; this.src='${fallbackImg}';">
+                <div class="axg-card-body">
+                    <div>
+                        <a href="${prodUrl}" target="_top" class="axg-card-title">${prod.title}</a>
+                        <div class="axg-card-price">${priceStr}</div>
+                    </div>
+                    <button class="axg-card-btn" data-id="${prodId}" data-url="${prodUrl}">
+                        <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;"><path d="M11 9h2V6h3V4h-3V1h-2v3H8v2h3v3zm-4 9c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2zm-9.83-3.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.86-7.01L19.42 4h-.01l-1.1 2-2.76 5H8.53l-.13-.27L6.16 6l-.95-2-.94-2H1v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.13 0-.25-.11-.25-.25z"/></svg>
+                        <span>${t.add_to_cart}</span>
+                    </button>
+                </div>
+            `;
+
+            const btn = card.querySelector('.axg-card-btn');
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.handleAddToCart(btn, prod);
+            });
+
+            return card;
+        }
+
+        async handleAddToCart(btn, prod) {
+            const t = this.getTranslations();
+            const originalText = btn.querySelector('span').textContent;
+            btn.querySelector('span').textContent = 'Lägger till...';
+            btn.disabled = true;
+
+            try {
+                // If on WooCommerce, run AJAX add-to-cart without reload
+                if (this.config.is_woocommerce) {
+                    let cartUrl = '/?wc-ajax=add_to_cart';
+                    if (window.wc_add_to_cart_params && window.wc_add_to_cart_params.wc_ajax_url) {
+                        cartUrl = window.wc_add_to_cart_params.wc_ajax_url.toString().replace('%%endpoint%%', 'add_to_cart');
+                    } else if (window.axgai_woo_settings && window.axgai_woo_settings.ajax_url) {
+                        cartUrl = window.axgai_woo_settings.ajax_url.replace('/wp-admin/admin-ajax.php', '/?wc-ajax=add_to_cart');
+                    }
+
+                    const reqData = new URLSearchParams({
+                        product_id: (prod.id || '').toString(),
+                        quantity: '1'
+                    });
+
+                    const res = await fetch(cartUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: reqData.toString()
+                    });
+                    
+                    const data = await res.json();
+                    
+                    if (data.error && data.product_url) {
+                        window.location.href = data.product_url;
+                        return;
+                    }
+
+                    // Trigger standard WooCommerce fragment refresh
+                    if (window.jQuery) {
+                        window.jQuery(document.body).trigger('added_to_cart', [data.fragments, data.cart_hash, null]);
+                    }
+                } else if (window.Shopify) {
+                    // Shopify native cart AJAX
+                    await fetch('/cart/add.js', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: prod.id, quantity: 1 })
+                    });
+                } else {
+                    // Fallback redirect to product or direct cart URL
+                    if (prod.url) window.location.href = prod.url;
+                }
+
+                // Success visual state
+                btn.classList.add('axg-btn-added');
+                btn.querySelector('span').textContent = t.added;
+                setTimeout(() => {
+                    btn.classList.remove('axg-btn-added');
+                    btn.querySelector('span').textContent = originalText;
+                    btn.disabled = false;
+                }, 2500);
+
+            } catch (err) {
+                console.warn('Add to cart fallback triggered:', err);
+                if (prod.url) window.location.href = prod.url;
+            }
+        }
+
+        renderTrackingCard(data) {
+            const card = document.createElement('div');
+            card.className = 'axg-tracking-card';
+            const t = this.getTranslations();
+
+            const isShipped = data.status === 'completed' || data.status === 'shipped';
+            const isProcessing = data.status === 'processing' || isShipped;
+
+            card.innerHTML = `
+                <div class="axg-track-header">
+                    <span>📦 Order #${data.order_id}</span>
+                    <span style="color:#06b6d4;">${data.status_label || data.status}</span>
+                </div>
+                <div class="axg-timeline">
+                    <div class="axg-timeline-step axg-step-active">
+                        <div class="axg-step-node">✓</div>
+                        <span class="axg-step-label">${t.order_received}</span>
+                    </div>
+                    <div class="axg-timeline-step ${isProcessing ? 'axg-step-active' : ''}">
+                        <div class="axg-step-node">${isProcessing ? '✓' : '2'}</div>
+                        <span class="axg-step-label">${t.order_processing}</span>
+                    </div>
+                    <div class="axg-timeline-step ${isShipped ? 'axg-step-active' : ''}">
+                        <div class="axg-step-node">${isShipped ? '✓' : '3'}</div>
+                        <span class="axg-step-label">${t.order_shipped}</span>
+                    </div>
+                </div>
+                ${data.tracking_url ? `
+                    <a href="${data.tracking_url}" target="_blank" rel="noopener" class="axg-track-action">
+                        ${t.track_button} (${data.carrier || 'Spåra'})
+                    </a>
+                ` : ''}
+            `;
+            return card;
+        }
+
+        markdownToHtml(str) {
+            if (!str) return '';
+            let html = str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            // Bold **text**
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // Italic *text*
+            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            // Markdown Links [text](url)
+            html = html.replace(/\[(.*?)\]\((https?:\/\/.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+            // Collapse excessive newlines
+            html = html.replace(/(\n\s*){3,}/g, '\n\n');
+            // Linebreaks
+            html = html.replace(/\n/g, '<br>');
+            return html;
+        }
+
+openMessenger() {
+            if (!this.config.messenger_link) return;
+            window.open(this.config.messenger_link, '_blank');
+        }
+
+        openWhatsApp() {
+            const rawNumber = this.config.whatsapp_number.replace(/[^0-9]/g, '');
+            if (!rawNumber) return;
+            let prefill = "Hej! Jag har en fråga om er butik.";
+            if (this.config.cur_product) {
+                prefill = `Hej! Jag tittar på "${this.config.cur_product.title}" (${window.location.href}) och har en fråga:`;
+            }
+            const waUrl = `https://wa.me/${rawNumber}?text=${encodeURIComponent(prefill)}`;
+            window.open(waUrl, '_blank');
+        }
+
+        async sendMessage() {
+            const text = this.input.value.trim();
+            const attachedImage = this.pendingImage;
+
+            if (!text && !attachedImage) return;
+
+            // Clear input and attachment state
+            this.input.value = '';
+            this.clearPendingImage();
+
+            // Render user bubble
+            this.appendMessage(text, 'user', attachedImage ? attachedImage.base64 : null, true);
+            this.showTyping();
+
+            try {
+                // Determine destination: If running in WordPress plugin with local PHP proxy
+                let responseData = null;
+
+                if (this.config.ajax_url && this.config.nonce) {
+                    // WordPress Local Hybrid Bridge
+                    const formData = new FormData();
+                    formData.append('action', 'axgai_woo_chat_message');
+                    formData.append('nonce', this.config.nonce);
+                    formData.append('agent_id', this.config.agent_id);
+                    formData.append('slug', this.config.slug);
+                    formData.append('message', text);
+                    formData.append('session_id', this.sessionId);
+                    formData.append('language', this.config.language);
+                    if (attachedImage) {
+                        formData.append('image_base64', attachedImage.base64);
+                    }
+                    if (this.config.cur_product) {
+                        formData.append('viewing_product', `${this.config.cur_product.title} (${this.config.cur_product.price})`);
+                    }
+
+                    const res = await fetch(this.config.ajax_url, { method: 'POST', body: formData });
+                    const json = await res.json();
+                    if (json.success && json.data) {
+                        responseData = json.data.reply;
+                    }
+                } else {
+                    // Cloud Direct Proxy (Shopify, Embeds, Demos)
+                    const payload = {
+                        agent_id: this.config.agent_id,
+                        action: 'chat-proxy',
+                        slug: this.config.slug,
+                        message: text,
+                        session_id: this.sessionId,
+                        language: this.config.language,
+                        image_base64: attachedImage ? attachedImage.base64 : null,
+                        viewing_product: this.config.cur_product ? `${this.config.cur_product.title} (${this.config.cur_product.price})` : '',
+                        is_woocommerce: this.config.is_woocommerce
+                    };
+
+                    const res = await fetch(this.config.api_url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const json = await res.json();
+                    responseData = json.reply;
+                }
+
+                this.hideTyping();
+
+                if (responseData) {
+                    this.appendMessage(responseData, 'bot', null, true);
+                } else {
+                    const t = this.getTranslations();
+                    this.appendMessage(t.error_conn, 'bot', null, false);
+                }
+
+            } catch (err) {
+                console.error('Chat error:', err);
+                this.hideTyping();
+                const t = this.getTranslations();
+                this.appendMessage(t.error_conn, 'bot', null, false);
+            }
+        }
+
+        checkExitIntent() {
+            // Proactive sales trigger: If user moves mouse towards closing tab
+            let exitTriggered = false;
+            document.addEventListener('mouseleave', (e) => {
+                if (e.clientY <= 10 && !exitTriggered && !this.isOpen && this.history.length === 1) {
+                    exitTriggered = true;
+                    this.toggle(true);
+                    let exitMsg = "Tvekar du innan du beställer? Fråga mig om storlekar, leveranstider eller rabatter så hjälper jag dig direkt!";
+                    if (this.config.language === 'en') {
+                        exitMsg = "Hesitating before placing your order? Ask me about sizing, shipping or discounts and I'll help you right away!";
+                    }
+                    this.appendMessage(exitMsg, 'bot', null, true);
+                }
             });
         }
     }
 
-    // Check and initialize Proactive Sales Triggers
-    const lang = axgaists_settings.language || 'en';
+    // Expose global initializer
+    window.initAxgWidget = function (config) {
+        return new AxgChatWidget(config);
+    };
 
-    // A. Inactivity Trigger (45 seconds)
-    if (parseInt(axgaists_settings.trigger_inactivity, 10) === 1) {
-        let inactivityTimer;
-        let inactivity_greeting = "Hello! Do you need help finding anything today? Feel free to ask!";
-        if (lang === 'sv') {
-            inactivity_greeting = "Hej! Behöver du hjälp med att hitta något idag? Fråga mig gärna!";
-        } else if (lang === 'de') {
-            inactivity_greeting = "Hallo! Brauchen Sie Hilfe beim Finden von etwas heute? Fragen Sie mich gerne!";
+    // Auto-initialize if AXG_WIDGET_CONFIG or axgai_woo_settings exists on page load
+    const doInit = () => {
+        if (!window.axgWidgetInstance && (window.AXG_WIDGET_CONFIG || window.axgai_woo_settings)) {
+            window.axgWidgetInstance = new AxgChatWidget();
         }
+    };
 
-        const resetInactivityTimer = () => {
-            clearTimeout(inactivityTimer);
-            inactivityTimer = setTimeout(() => {
-                axWooTriggerProactive(inactivity_greeting);
-            }, 45000); // 45 seconds
-        };
-
-        // Reset on any user activity
-        window.addEventListener('mousemove', resetInactivityTimer);
-        window.addEventListener('keypress', resetInactivityTimer);
-        window.addEventListener('scroll', resetInactivityTimer);
-        window.addEventListener('click', resetInactivityTimer);
-        resetInactivityTimer(); // Start the timer
-    }
-
-    // B. Deep Scroll Trigger (>75%)
-    if (parseInt(axgaists_settings.trigger_scroll, 10) === 1) {
-        let scroll_greeting = "It looks like you're reading up! Let me know if you have any questions about our products, shipping, or returns.";
-        if (lang === 'sv') {
-            scroll_greeting = "Det ser ut som att du läser på! Säg till om du har några funderingar kring våra produkter, frakt eller villkor.";
-        } else if (lang === 'de') {
-            scroll_greeting = "Es sieht so aus, als ob Sie aufmerksam lesen! Lassen Sie mich wissen, wenn Sie Fragen zu unseren Produkten, dem Versand oder den Rücksendungen haben.";
-        }
-
-        const handleScrollTrigger = () => {
-            const scrollPercent = (window.scrollY + window.innerHeight) / document.documentElement.scrollHeight;
-            if (scrollPercent > 0.75) {
-                axWooTriggerProactive(scroll_greeting);
-                window.removeEventListener('scroll', handleScrollTrigger); // Trigger once per load
-            }
-        };
-        window.addEventListener('scroll', handleScrollTrigger);
-    }
-
-    // C. Exit Intent Trigger
-    if (parseInt(axgaists_settings.trigger_exit, 10) === 1) {
-        let exit_greeting = "Wait! Did you know you can get 10% off your first order? Ask me for a discount code and I'll hook you up!";
-        if (lang === 'sv') {
-            exit_greeting = "Vänta lite! Visste du att du kan få 10% rabatt på din beställning? Fråga mig om en rabattkod så fixar jag det!";
-        } else if (lang === 'de') {
-            exit_greeting = "Warten Sie mal! Wussten Sie, dass Sie 10% Rabatt auf Ihre Bestellung erhalten können? Fragen Sie mich nach einem Rabattcode!";
-        }
-
-        const handleExitIntent = (e) => {
-            if (e.clientY < 10) { // Mouse leaves at the top boundary
-                axWooTriggerProactive(exit_greeting);
-                document.removeEventListener('mouseleave', handleExitIntent); // Trigger once per load
-            }
-        };
-        document.addEventListener('mouseleave', handleExitIntent);
-    }
-});
-
-function axWooAdjustViewport() {
-    const box = document.getElementById('ax-woo-chat-box');
-    if (box && box.style.display === 'flex' && window.innerWidth <= 480) {
-        const vv = window.visualViewport;
-        box.style.height = vv.height + 'px';
-        box.style.top = vv.offsetTop + 'px';
-        
-        const logs = document.getElementById('ax-woo-chat-logs');
-        if (logs) {
-            logs.scrollTop = logs.scrollHeight;
-        }
-    }
-}
-
-function axWooToggleChat() {
-    const box = document.getElementById('ax-woo-chat-box');
-    const wrapper = document.getElementById('ax-woo-chat-wrapper');
-    if (!box) return;
-    
-    const isOpening = box.style.display === 'none' || box.style.display === '';
-    
-    if (isOpening) {
-        box.style.display = 'flex';
-        if (window.innerWidth <= 480) {
-            document.body.classList.add('ax-no-scroll');
-            if (wrapper) wrapper.classList.add('ax-active');
-            setTimeout(() => {
-                const input = document.getElementById('ax-woo-chat-input');
-                if (input) input.focus();
-                if (window.visualViewport) {
-                    axWooAdjustViewport();
-                }
-            }, 100);
-        } else {
-            const input = document.getElementById('ax-woo-chat-input');
-            if (input) input.focus();
-        }
-        
-        // Check if we already have this product greeting in our active history to avoid double greetings
-        const history = JSON.parse(sessionStorage.getItem('ax_woo_chat_history') || '[]');
-        const hasGreetingInHistory = history.some(msg => msg.sender === 'bot' && msg.text.includes(axgaists_settings.cur_product ? axgaists_settings.cur_product.title : '__none__'));
-        
-        // Dynamic contextual greeting if on single product page
-        if (axgaists_settings.cur_product && !window.axgaists_greeted && !hasGreetingInHistory) {
-            window.axgaists_greeted = true;
-            const p = axgaists_settings.cur_product;
-            let contextual_msg = `I see you're looking at "${p.title}" (${p.price}). How can I help you with this product?`;
-            
-            if (axgaists_settings.language === 'sv') {
-                contextual_msg = `Jag ser att du tittar på "${p.title}" (${p.price}). Hur kan jag hjälpa dig med den här produkten?`;
-            } else if (axgaists_settings.language === 'de') {
-                contextual_msg = `Ich sehe, Sie schauen sich "${p.title}" (${p.price}) an. Wie kann ich Ihnen bei diesem Produkt helfen?`;
-            } else if (axgaists_settings.language === 'fr') {
-                contextual_msg = `Je vois que vous regardez "${p.title}" (${p.price}). Comment puis-je vous aider avec ce produit ?`;
-            } else if (axgaists_settings.language === 'es') {
-                contextual_msg = `Veo que estás mirando "${p.title}" (${p.price}). ¿Cómo puedo ayudarte con este producto?`;
-            } else if (axgaists_settings.language === 'pl') {
-                contextual_msg = `Widzę, że patrzysz na "${p.title}" (${p.price}). Jak mogę pomóc Ci w wyborze tego produktu?`;
-            } else if (axgaists_settings.language === 'it') {
-                contextual_msg = `Vedo que stai guardando "${p.title}" (${p.price}). Come posso aiutarti con questo produkt?`;
-            } else if (axgaists_settings.language === 'nl') {
-                contextual_msg = `Ik zie dat je kijkt naar "${p.title}" (${p.price}). Hoe kan ik je helpen met dit product?`;
-            } else if (axgaists_settings.language === 'pt') {
-                contextual_msg = `Vejo que está olhando para "${p.title}" (${p.price}). Como posso ajudar você com este produto?`;
-            } else if (axgaists_settings.language === 'ru') {
-                contextual_msg = `Я вижу, вы смотрите на "${p.title}" (${p.price}). Как я могу помочь вам с этим товаром?`;
-            } else if (axgaists_settings.language === 'tr') {
-                contextual_msg = `Şu anda "${p.title}" (${p.price}) ürününe baktığınızı görüyorum. Bu ürünle ilgili size nasıl yardımcı olabilirim?`;
-            } else if (axgaists_settings.language === 'fa') {
-                contextual_msg = `من متوجه شدم که شما در حال مشاهده محصول "${p.title}" (${p.price}) هستید. چطور می‌توانم در مورد این محصول به شما کمک کنم؟`;
-            } else if (axgaists_settings.language === 'ar') {
-                contextual_msg = `أرى أنك تبحث في "${p.title}" (${p.price}). كيف يمكنني مساعدتك في هذا المنتج?`;
-            }
-            
-            setTimeout(() => {
-                axWooAppend(contextual_msg, 'bot');
-            }, 600);
-        }
+    if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', doInit);
     } else {
-        box.style.display = 'none';
-        if (window.innerWidth <= 480) {
-            document.body.classList.remove('ax-no-scroll');
-            if (wrapper) wrapper.classList.remove('ax-active');
-            box.style.height = '';
-            box.style.top = '';
-        }
-    }
-}
-
-function axWooSendQuickQuestion(btn) {
-    const questionText = btn.textContent || btn.innerText;
-    const input = document.getElementById('ax-woo-chat-input');
-    if (input) {
-        input.value = questionText;
-        axWooSendMessage();
-    }
-}
-
-function axWooParseMarkdown(text) {
-    if (!text) return '';
-    
-    // Escape standard HTML tags for security
-    let html = text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-        
-    // 1. Bold: **text** -> <strong>text</strong>
-    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // 2. Italic: *text* -> <em>text</em>
-    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    
-    // 3. Links: [text](url) -> anchor tags
-    html = html.replace(/\[(.*?)\]\((https?:\/\/.*?)\)/g, '<a href="$2" target="_blank" class="ax-woo-chat-link" style="color: #06b6d4; text-decoration: underline; font-weight: bold;" rel="noopener noreferrer">$1</a>');
-    
-    // 4. Raw URLs -> clickable links (Safari-compatible masking logic, avoiding lookbehind)
-    var tempLinks = [];
-    html = html.replace(/<a [^>]*>.*?<\/a>/g, function(match) {
-        tempLinks.push(match);
-        return '___AX_LINK_PLACEHOLDER_' + (tempLinks.length - 1) + '___';
-    });
-    
-    var urlRegex = /(https?:\/\/[^\s<]+)/g;
-    html = html.replace(urlRegex, '<a href="$1" target="_blank" class="ax-woo-chat-link" style="color: #06b6d4; text-decoration: underline; font-weight: bold;" rel="noopener noreferrer">$1</a>');
-    
-    html = html.replace(/___AX_LINK_PLACEHOLDER_(\d+)___/g, function(match, id) {
-        return tempLinks[parseInt(id)];
-    });
-    
-    // 5. Bullet lists
-    html = html.replace(/^\s*\*\s+(.*?)$/gm, '• $1');
-    
-    // 6. Line breaks
-    html = html.replace(/\n/g, '<br>');
-    
-    return html;
-}
-
-function axWooAppend(text, sender, save = true) {
-    const logs = document.getElementById('ax-woo-chat-logs');
-    if (!logs) return;
-    
-    const div = document.createElement('div');
-    div.className = 'ax-woo-msg ax-woo-' + sender;
-    if (sender === 'user') {
-        div.style.backgroundColor = axgaists_settings.color_theme;
-    }
-    div.innerHTML = axWooParseMarkdown(text);
-    logs.appendChild(div);
-    logs.scrollTop = logs.scrollHeight;
-
-    // Save message to sessionStorage if requested
-    if (save) {
-        const history = JSON.parse(sessionStorage.getItem('ax_woo_chat_history') || '[]');
-        history.push({ text: text, sender: sender });
-        if (history.length > 50) {
-            history.shift();
-        }
-        sessionStorage.setItem('ax_woo_chat_history', JSON.stringify(history));
-    }
-}
-
-async function axWooSendMessage() {
-    const input = document.getElementById('ax-woo-chat-input');
-    if (!input) return;
-    
-    const msg = input.value.trim();
-    if (!msg) return;
-
-    // Check premium state from localStorage
-    const isPremium = localStorage.getItem('ax_woo_is_premium') === '1';
-
-    // LOCAL PERSISTENT SECURE BUDGET ENFORCEMENT (50 requests per day, bypassed for Premium!)
-    const todayStr = new Date().toISOString().split('T')[0];
-    let lastDate = localStorage.getItem('ax_woo_budget_date') || todayStr;
-    let budget = parseInt(localStorage.getItem('ax_woo_msg_budget') || '0');
-
-    if (lastDate !== todayStr) {
-        budget = 0;
-        localStorage.setItem('ax_woo_budget_date', todayStr);
-        localStorage.setItem('ax_woo_msg_budget', '0');
+        doInit();
     }
 
-    if (!isPremium && budget >= 50) {
-        let errorMsg = "You have reached the daily limit of 50 messages for this demo bot. Please come back tomorrow or contact us to unlock the unlimited version!";
-        
-        // Dictionary of daily limit messages
-        const limitDict = {
-            'sv': "Du har nått gränsen på 50 testmeddelanden för idag för denna gratis-demo. Välkommen åter imorgon eller kontakta oss för att låsa upp fullversionen!",
-            'de': "Sie haben das tägliche Limit von 50 Nachrichten für diesen Demo-Bot erreicht. Bitte kommen Sie morgen wieder oder kontaktieren Sie uns, um die unbegrenzte Version freizuschalten!",
-            'fr': "Vous avez atteint la limite quotidienne de 50 messages pour ce bot de démonstration. Veuillez revenir demain ou nous contacter pour déverrouiller la version illimitée !",
-            'es': "Has alcanzado el límite diario de 50 mensajes para este bot de demostración. ¡Vuelve mañana o contáctanos para desbloquear la versión ilimitada!",
-            'pl': "Osiągnąłeś dzienny limit 50 wiadomości dla tego bota demonstracyjnego. Wróć jutro lub skontaktuj się z nami, aby odblokować wersję nielimitowaną!",
-            'it': "Hai raggiunto il limite giornaliero di 50 messaggi per questo bot dimostrativo. Torna domani o contattaci per sbloccare la versione illimitata!",
-            'pt': "Você atingiu o limite diário de 50 mensagens para este bot de demonstração. Volte amanhã ou entre em contato conosco para desbloquear a versão ilimitada!",
-            'nl': "Je hebt de dagelijkse limiet van 50 berichten voor deze demo-bot bereikt. Kom morgen terug of neem contact met ons op om de onbeperkte versie te ontgrendelen!",
-            'ru': "Вы достигли суточного лимита в 50 сообщений для этого демо-бота. Пожалуйста, вернитесь завтра или свяжитесь с нами, чтобы разблокировать безлимитную версию!",
-            'ar': "لقد وصلت إلى الحد الأقصى اليومي البالغ 50 رسالة لهذا البوت التجريبي. يرجى العودة غداً أو الاتصال بنا لفتح النسخة غير المحدودة!",
-            'tr': "Bu demo botu için günlük 50 mesaj sınırına ulaştınız. Lütfen yarın tekrar gelin veya sınırsız sürümü açmak için bizimle iletişime geçin!",
-            'fa': "شما به حد مجاز روزانه ۵۰ پیام برای این بات دمو رسیده‌اید. لطفا فردا دوباره مراجعه کنید یا با ما تماس بگیرید تا نسخه نامحدود را فعال کنید!"
-        };
-
-        if (limitDict[axgaists_settings.language]) {
-            errorMsg = limitDict[axgaists_settings.language];
-        }
-
-        axWooAppend(errorMsg, "bot");
-        return;
-    }
-
-    axWooAppend(msg, 'user');
-    input.value = '';
-    
-    if (!isPremium) {
-        localStorage.setItem('ax_woo_msg_budget', (budget + 1).toString());
-    }
-
-    // Show loading spinner
-    const loader = document.createElement('div');
-    loader.className = 'ax-woo-msg ax-woo-bot';
-    loader.id = 'ax-woo-loading';
-    loader.textContent = '...';
-    document.getElementById('ax-woo-chat-logs').appendChild(loader);
-    document.getElementById('ax-woo-chat-logs').scrollTop = document.getElementById('ax-woo-chat-logs').scrollHeight;
-
-    // Capture single product contextual view info
-    let viewing_product_str = '';
-    if (axgaists_settings.cur_product) {
-        viewing_product_str = `${axgaists_settings.cur_product.title} (${axgaists_settings.cur_product.price})`;
-    }
-
-    // Build AJAX payload
-    const formData = new FormData();
-    formData.append('action', 'axgaists_chat_message');
-    formData.append('nonce', axgaists_settings.nonce);
-    formData.append('agent_id', axgaists_settings.agent_id);
-    formData.append('message', msg);
-    formData.append('session_id', axWooSid);
-    formData.append('language', axgaists_settings.language);
-    formData.append('slug', axgaists_settings.slug);
-    formData.append('contact_email', axgaists_settings.contact_email);
-    formData.append('viewing_product', viewing_product_str);
-
-    try {
-        const response = await fetch(axgaists_settings.ajax_url, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        const loaderNode = document.getElementById('ax-woo-loading');
-        if (loaderNode) loaderNode.remove();
-
-        if (data.success && data.data && data.data.reply) {
-            axWooAppend(data.data.reply, 'bot');
-            
-            // Sync and persist premium state dynamically from Firestore proxy response
-            if (data.data.is_premium !== undefined) {
-                const newPremium = data.data.is_premium;
-                localStorage.setItem('ax_woo_is_premium', newPremium ? '1' : '0');
-                const branding = document.getElementById('ax-woo-chat-branding');
-                if (branding) {
-                    branding.style.display = newPremium ? 'none' : 'block';
-                }
-            }
-        } else {
-            let errorText = 'Connection error. Please try again.';
-            if (axgaists_settings.language === 'sv') errorText = 'Anslutningsfel. Försök igen.';
-            axWooAppend(errorText, 'bot');
-        }
-    } catch (e) {
-        const loaderNode = document.getElementById('ax-woo-loading');
-        if (loaderNode) loaderNode.remove();
-        
-        let errorText = 'Connection error.';
-        if (axgaists_settings.language === 'sv') errorText = 'Anslutningsfel.';
-        axWooAppend(errorText, 'bot');
-    }
-}
+})(window, document);

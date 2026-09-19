@@ -2,8 +2,8 @@
 Contributors: mathiasax
 Tags: woocommerce, chatbot, ai assistant, product recommendations, gemini
 Requires at least: 5.0
-Tested up to: 6.7
-Stable tag: 1.1.18
+Tested up to: 7.0.3
+Stable tag: 2.0.14
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -59,9 +59,49 @@ Absolutely! The plugin has native, built-in support for 13 global languages. Sim
 
 == Changelog ==
 
-= 1.1.18 =
-*   Enhancement: Added transparent tier pricing directly onto the checkout cards with localized European (€) and International ($ USD) currency support.
-*   Enhancement: Aligned plugin and asset versions to 1.1.18 for instant browser cache-busting.
+= 2.0.14 =
+* Feature: Refactored function prefixes to comply with WordPress.org repository guidelines.
+
+= 2.0.13 =
+* Tweak: Changed image rendering in product carousels to scale images proportionally without cropping (object-fit: contain) so that the entire product is always visible natively.
+
+= 2.0.12 =
+* Tweak: Redesigned the product carousel CSS to center and focus on one full-width product card at a time, creating a cleaner and more distinct swiping/scrolling experience.
+
+= 2.0.11 =
+* Bugfix: Collapsed excessive empty spaces (CSS line breaks) in the chat timeline, which occurred whenever Gemini split sentences around dynamically pulled product carousels.
+
+= 2.0.10 =
+* Bugfix: Further refined WooCommerce AJAX cart compatibility by passing explicit Application payloads and XMLHttp header handshakes, along with automatic redirection for complex products (e.g. variables) that require manual selection.
+
+= 2.0.9 =
+* Bugfix: Changed Add to Cart payload format to seamlessly pass through WooCommerce's standard POST validation for instant cart updates.
+* Tweak: Product links inside the chat now sensibly open in the same window, preventing excessive tabs from stacking up while browsing.
+
+= 2.0.8 =
+* New: Added an explicit 'Manage or cancel subscription' direct link below the billing cards that hooks into the automated opt-out system.
+
+= 2.0.7 =
+* Bugfix: Restored graphical order tracking timeline by formatting the PHP local order DB return as `:::order_tracking{...}:::` JSON payload for the v2 frontend widget.
+
+= 2.0.6 =
+* Update: Updated widget footer branding text to display short 'AxG AI' linked to axelsson.graphics.
+
+= 2.0.5 =
+* Bugfix: Resolved issue where Add to Cart functionality failed because the WooCommerce environment flag was missing in the v2 JS initialization.
+
+= 2.0.3 =
+* Fix: Removed legacy v1 HTML output from the footer that was causing JS reference errors and layout duplication when loading the v2 Shadow DOM component.
+
+= 2.0.1 =
+* Bugfix: Fix product widget rendering of missing thumbnails using scalable SVG fallbacks.
+* Bugfix: Updated product regex to support multiline JSON payload from API.
+* Enhancement: Added valid WooCommerce image URLs to the PHP catalog exporter natively.
+
+= 2.0.0 =
+* Major Update: Introduced the next-generation AxG Chat Widget (v2) directly inside WooCommerce.
+* Features: Shadow DOM encapsulation, photo uploads, horizontal product carousels, graphical order tracking, and integrated WhatsApp & Messenger links.
+* Cloud Backend: Updated scraping engine to preserve product images for correct UI rendering.
 
 = 1.1.17 =
 *   Enhancement: Migrated all Stripe checkout links to use your premium, custom branding checkout subdomain 'https://checkout.axelsson.graphics/' for a completely seamless white-label purchase flow!

@@ -10,18 +10,18 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 // Wrap in a uniquely prefixed function to prevent global variable pollution and comply with guidelines
-function axgaists_uninstall_plugin() {
+function axgai_woo_uninstall_plugin() {
     global $wpdb;
 
     // 1. Delete registered options
     $options = array(
-        'axgaists_agent_id',
-        'axgaists_slug',
-        'axgaists_language',
-        'axgaists_chat_title',
-        'axgaists_color_theme',
-        'axgaists_contact_email',
-        'axgaists_persona'
+        'axgai_woo_agent_id',
+        'axgai_woo_slug',
+        'axgai_woo_language',
+        'axgai_woo_chat_title',
+        'axgai_woo_color_theme',
+        'axgai_woo_contact_email',
+        'axgai_woo_persona'
     );
 
     foreach ( $options as $option ) {
@@ -29,9 +29,9 @@ function axgaists_uninstall_plugin() {
     }
 
     // 2. Drop the custom conversation logs table
-    $table_name = $wpdb->prefix . 'axgaists_conversations';
+    $table_name = $wpdb->prefix . 'axgai_woo_conversations';
     // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, PluginCheck.Security.DirectDB.UnescapedDBParameter
     $wpdb->query( "DROP TABLE IF EXISTS " . esc_sql( $table_name ) );
 }
 
-axgaists_uninstall_plugin();
+axgai_woo_uninstall_plugin();
