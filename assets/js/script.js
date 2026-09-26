@@ -367,11 +367,27 @@
                 }
                 .axg-msg-user a { color: #ffffff !important; text-decoration: underline; }
                 .axg-msg-bot a { color: ${color}; font-weight: 600; text-decoration: underline; }
+                .axg-msg-img-wrap {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                    margin-bottom: 8px;
+                }
+                .axg-msg-img-badge {
+                    font-size: 10.5px;
+                    font-weight: 700;
+                    color: rgba(255, 255, 255, 0.9);
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                }
                 .axg-msg-img-user {
                     max-width: 100%;
-                    max-height: 180px;
+                    max-height: 200px;
                     border-radius: 12px;
-                    margin-bottom: 6px;
+                    border: 2px solid rgba(255, 255, 255, 0.35);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    object-fit: cover;
                     display: block;
                 }
 
@@ -379,26 +395,39 @@
                 .axg-typing {
                     display: flex;
                     align-items: center;
-                    gap: 4px;
-                    padding: 10px 14px;
+                    gap: 8px;
+                    padding: 10px 16px;
                     background: #ffffff;
                     border: 1px solid #e2e8f0;
-                    border-radius: 16px;
+                    border-radius: 18px;
                     border-bottom-left-radius: 4px;
                     width: fit-content;
+                    margin: 6px 0;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                    animation: axgFadeIn 0.25s ease-out;
+                }
+                .axg-typing-label {
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: #64748b;
+                }
+                .axg-typing-dots {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
                 }
                 .axg-typing-dot {
                     width: 6px;
                     height: 6px;
-                    background: #94a3b8;
+                    background: ${color};
                     border-radius: 50%;
-                    animation: axgBlink 1.4s infinite both;
+                    animation: axgBlink 1.4s infinite ease-in-out both;
                 }
                 .axg-typing-dot:nth-child(2) { animation-delay: 0.2s; }
                 .axg-typing-dot:nth-child(3) { animation-delay: 0.4s; }
                 @keyframes axgBlink {
-                    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-                    40% { opacity: 1; transform: scale(1.1); }
+                    0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+                    40% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 6px ${color}; }
                 }
 
                 /* Product Carousel & Cards */
@@ -936,12 +965,22 @@ const msgLink = this.config.messenger_link || '';
             const div = document.createElement('div');
             div.className = `axg-msg axg-msg-${sender}`;
 
-            // If user attached an image, display it inside message bubble
+            // If user attached an image, display it inside message bubble with clear container & badge
             if (imageBase64) {
+                const imgWrap = document.createElement('div');
+                imgWrap.className = 'axg-msg-img-wrap';
+
+                const badge = document.createElement('span');
+                badge.className = 'axg-msg-img-badge';
+                badge.textContent = '📷 Bifogad bild';
+
                 const imgNode = document.createElement('img');
                 imgNode.src = imageBase64;
                 imgNode.className = 'axg-msg-img-user';
-                div.appendChild(imgNode);
+
+                imgWrap.appendChild(badge);
+                imgWrap.appendChild(imgNode);
+                div.appendChild(imgWrap);
             }
 
             // Parse Structured formats (Products, Order tracking, Markdown)
@@ -961,10 +1000,12 @@ const msgLink = this.config.messenger_link || '';
         }
 
         showTyping() {
+            if (this.shadow.getElementById('axg-typing-indicator')) return;
             const typing = document.createElement('div');
             typing.id = 'axg-typing-indicator';
             typing.className = 'axg-typing';
-            typing.innerHTML = '<div class="axg-typing-dot"></div><div class="axg-typing-dot"></div><div class="axg-typing-dot"></div>';
+            const labelText = this.config.language === 'en' ? 'AI thinking...' : 'Svarar...';
+            typing.innerHTML = `<span class="axg-typing-label">${labelText}</span><div class="axg-typing-dots"><div class="axg-typing-dot"></div><div class="axg-typing-dot"></div><div class="axg-typing-dot"></div></div>`;
             this.messagesContainer.appendChild(typing);
             this.scrollToBottom();
         }

@@ -3,7 +3,7 @@ Contributors: mathiasax
 Tags: woocommerce, chatbot, ai assistant, product recommendations, gemini
 Requires at least: 5.0
 Tested up to: 7.0.3
-Stable tag: 2.0.14
+Stable tag: 2.0.15
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -58,6 +58,10 @@ Yes, this plugin is specifically engineered for WooCommerce stores to retrieve a
 Absolutely! The plugin has native, built-in support for 13 global languages. Simply select your desired language in the admin configuration panel and the chat bubble will translate seamlessly.
 
 == Changelog ==
+
+= 2.0.15 =
+* Enhancement: Added pulsing typing indicator animation ("Svarar...") while waiting for AI response to improve user feedback.
+* Enhancement: Added visual image attachment badge and styled container when users attach images in chat.
 
 = 2.0.14 =
 * Feature: Refactored function prefixes to comply with WordPress.org repository guidelines.
