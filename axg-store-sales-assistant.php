@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgai_woo_chat]
- * Version: 2.0.15
+ * Version: 2.0.16
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -587,6 +587,110 @@ function axgai_woo_options_page() {
 }
 
 // --- Step 4: Conversation Insights Admin Dashboard ---
+function axgai_woo_format_insight_message( $message, $is_user ) {
+    if ( empty( $message ) ) {
+        return '';
+    }
+
+    $text = $message;
+    $product_cards = array();
+    $tracking_card = null;
+
+    // 1. Extract and parse :::order_tracking{...}:::
+    if ( preg_match_all( '/:::order_tracking(\{[\s\S]*?\}):::/', $text, $matches, PREG_SET_ORDER ) ) {
+        foreach ( $matches as $match ) {
+            $data = json_decode( $match[1], true );
+            if ( $data ) {
+                $tracking_card = $data;
+            }
+        }
+        $text = preg_replace( '/:::order_tracking\{[\s\S]*?\}:::/', '', $text );
+    }
+
+    // 2. Extract and parse singular :::product{...}:::
+    if ( preg_match_all( '/:::product(\{[\s\S]*?\}):::/', $text, $matches, PREG_SET_ORDER ) ) {
+        foreach ( $matches as $match ) {
+            $data = json_decode( $match[1], true );
+            if ( $data ) {
+                $product_cards[] = $data;
+            }
+        }
+        $text = preg_replace( '/:::product\{[\s\S]*?\}:::/', '', $text );
+    }
+
+    // 3. Extract and parse plural :::products[...]:::
+    if ( preg_match_all( '/:::products(\[[\s\S]*?\]):::/', $text, $matches, PREG_SET_ORDER ) ) {
+        foreach ( $matches as $match ) {
+            $data = json_decode( $match[1], true );
+            if ( is_array( $data ) ) {
+                foreach ( $data as $p ) {
+                    $product_cards[] = $p;
+                }
+            }
+        }
+        $text = preg_replace( '/:::products\[[\s\S]*?\]:::/', '', $text );
+    }
+
+    $clean_text = trim( $text );
+    $html = esc_html( $clean_text );
+
+    // Bold **text**
+    $html = preg_replace( '/\*\*(.*?)\*\*/', '<strong>$1</strong>', $html );
+    // Italic *text*
+    $html = preg_replace( '/\*(.*?)\*/', '<em>$1</em>', $html );
+    // Code `code`
+    $html = preg_replace( '/`([^`]+)`/', '<code style="background: rgba(0,0,0,0.06); padding: 2px 6px; border-radius: 4px; font-size: 11px;">$1</code>', $html );
+    // Links [label](url)
+    $link_color = $is_user ? '#ffffff' : '#10b981';
+    $html = preg_replace( '/\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: ' . $link_color . '; text-decoration: underline;">$1</a>', $html );
+    // Line breaks
+    $html = nl2br( $html );
+
+    $output = '';
+    if ( ! empty( $html ) ) {
+        $output .= '<div style="font-size: 13px; line-height: 1.5;">' . $html . '</div>';
+    }
+
+    // Render Product Cards if found
+    if ( ! empty( $product_cards ) ) {
+        $output .= '<div style="display: flex; gap: 8px; overflow-x: auto; padding: 6px 0; margin-top: 6px;">';
+        foreach ( $product_cards as $p ) {
+            $p_title = isset( $p['title'] ) ? esc_html( $p['title'] ) : 'Produkt';
+            $p_price = isset( $p['price'] ) ? esc_html( $p['price'] ) : '';
+            $p_img   = isset( $p['image'] ) ? esc_url( $p['image'] ) : '';
+            $p_url   = isset( $p['url'] ) ? esc_url( $p['url'] ) : '#';
+
+            $output .= '<div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; min-width: 140px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: center;">';
+            if ( $p_img ) {
+                $output .= '<img src="' . $p_img . '" alt="' . $p_title . '" style="width: 100%; height: 70px; object-fit: contain; margin-bottom: 4px; border-radius: 4px;" />';
+            }
+            $output .= '<div style="font-size: 11px; font-weight: bold; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><a href="' . $p_url . '" target="_blank" style="color: inherit; text-decoration: none;">' . $p_title . '</a></div>';
+            if ( $p_price ) {
+                $output .= '<div style="font-size: 11px; color: #10b981; font-weight: bold; margin-top: 2px;">' . $p_price . '</div>';
+            }
+            $output .= '</div>';
+        }
+        $output .= '</div>';
+    }
+
+    // Render Tracking Card if found
+    if ( ! empty( $tracking_card ) ) {
+        $order_num = isset( $tracking_card['order_number'] ) ? esc_html( $tracking_card['order_number'] ) : ( isset( $tracking_card['name'] ) ? esc_html( $tracking_card['name'] ) : '' );
+        $status    = isset( $tracking_card['fulfillment_status'] ) ? esc_html( $tracking_card['fulfillment_status'] ) : ( isset( $tracking_card['status'] ) ? esc_html( $tracking_card['status'] ) : 'Behandlas' );
+        $track_url = isset( $tracking_card['tracking_url'] ) ? esc_url( $tracking_card['tracking_url'] ) : '';
+
+        $output .= '<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px; color: #166534; margin-top: 6px;">';
+        $output .= '<div style="font-weight: bold; font-size: 12px;">📦 Order #' . $order_num . '</div>';
+        $output .= '<div style="font-size: 11px;">Status: <strong>' . $status . '</strong></div>';
+        if ( $track_url ) {
+            $output .= '<a href="' . $track_url . '" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin-top: 4px; font-size: 11px; color: #15803d; font-weight: bold; text-decoration: underline;">Spåra paketet →</a>';
+        }
+        $output .= '</div>';
+    }
+
+    return $output;
+}
+
 function axgai_woo_insights_page() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'axgai_woo_conversations';
@@ -761,7 +865,7 @@ function axgai_woo_insights_page() {
                                 <div style="font-weight: bold; font-size: 10px; margin-bottom: 3px; color: <?php echo $is_user ? 'rgba(255,255,255,0.85)' : '#4b5563'; ?>;">
                                     <?php echo $is_user ? 'Customer' : 'AI Assistant'; ?>
                                 </div>
-                                <div style="white-space: pre-wrap;"><?php echo esc_html( $log->message ); ?></div>
+                                <div><?php echo axgai_woo_format_insight_message( $log->message, $is_user ); ?></div>
                                 <div style="text-align: right; font-size: 8px; margin-top: 5px; color: <?php echo $is_user ? 'rgba(255,255,255,0.7)' : '#9ca3af'; ?>;">
                                     <?php echo esc_html( $log->timestamp ); ?>
                                 </div>
@@ -817,8 +921,8 @@ function axgai_woo_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.15' );
-    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.15', true );
+    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.16' );
+    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.16', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
