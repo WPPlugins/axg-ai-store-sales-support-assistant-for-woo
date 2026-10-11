@@ -412,22 +412,26 @@
                     color: #64748b;
                 }
                 .axg-typing-dots {
-                    display: flex;
+                    display: inline-flex;
                     align-items: center;
-                    gap: 4px;
+                    gap: 5px;
                 }
                 .axg-typing-dot {
-                    width: 6px;
-                    height: 6px;
+                    width: 8px;
+                    height: 8px;
+                    min-width: 8px;
+                    min-height: 8px;
+                    flex-shrink: 0;
                     background: ${color};
                     border-radius: 50%;
-                    animation: axgBlink 1.4s infinite ease-in-out both;
+                    display: inline-block;
+                    animation: axgBlink 1.2s infinite ease-in-out both;
                 }
                 .axg-typing-dot:nth-child(2) { animation-delay: 0.2s; }
                 .axg-typing-dot:nth-child(3) { animation-delay: 0.4s; }
                 @keyframes axgBlink {
-                    0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
-                    40% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 6px ${color}; }
+                    0%, 80%, 100% { opacity: 0.3; transform: scale(0.85); }
+                    40% { opacity: 1; transform: scale(1.4); box-shadow: 0 0 8px ${color}; }
                 }
 
                 /* Product Carousel & Cards */
@@ -438,44 +442,31 @@
                 }
                 .axg-carousel {
                     display: flex;
-                    gap: 16px;
+                    gap: 12px;
                     overflow-x: auto;
                     overflow-y: hidden;
-                    padding: 6px 4px 12px 4px;
+                    padding: 8px 10%;
                     scroll-snap-type: x mandatory;
-                    scrollbar-width: thin;
-                    scrollbar-color: #cbd5e1 #f1f5f9;
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
                     cursor: grab;
                     user-select: none;
                     -webkit-overflow-scrolling: touch;
                     scroll-behavior: smooth;
-                    scroll-padding: 0 5%;
+                }
+                .axg-carousel::-webkit-scrollbar {
+                    display: none;
                 }
                 .axg-carousel.axg-grabbing {
                     cursor: grabbing;
                     scroll-behavior: auto;
                     scroll-snap-type: none;
                 }
-                .axg-carousel::-webkit-scrollbar {
-                    height: 6px;
-                    display: block;
-                }
-                .axg-carousel::-webkit-scrollbar-track {
-                    background: #f1f5f9;
-                    border-radius: 4px;
-                }
-                .axg-carousel::-webkit-scrollbar-thumb {
-                    background: #cbd5e1;
-                    border-radius: 4px;
-                }
-                .axg-carousel::-webkit-scrollbar-thumb:hover {
-                    background: #94a3b8;
-                }
 
                 /* Nav arrows for Carousel */
                 .axg-carousel-nav {
                     position: absolute;
-                    top: 50%;
+                    top: 42%;
                     transform: translateY(-50%);
                     width: 32px;
                     height: 32px;
@@ -498,10 +489,10 @@
                     background: #f8fafc;
                 }
                 .axg-carousel-nav.prev {
-                    left: -8px;
+                    left: -4px;
                 }
                 .axg-carousel-nav.next {
-                    right: -8px;
+                    right: -4px;
                 }
                 .axg-carousel-nav.hidden {
                     display: none;
@@ -511,8 +502,11 @@
                     height: 18px;
                     fill: currentColor;
                 }
+
+                /* Product Card Width & Alignment */
                 .axg-product-card {
-                    flex: 0 0 calc(100% - 32px);
+                    flex: 0 0 215px;
+                    max-width: 82%;
                     scroll-snap-align: center;
                     background: #ffffff;
                     border: 1px solid #e2e8f0;
@@ -522,6 +516,32 @@
                     display: flex;
                     flex-direction: column;
                     transition: transform 0.2s;
+                }
+                .axg-product-card:hover { transform: translateY(-2px); }
+
+                /* Dots Pagination Below Carousel */
+                .axg-carousel-dots {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                    margin-top: 8px;
+                }
+                .axg-carousel-dots.hidden {
+                    display: none;
+                }
+                .axg-carousel-dot {
+                    width: 7px;
+                    height: 7px;
+                    border-radius: 50%;
+                    background: #cbd5e1;
+                    cursor: pointer;
+                    transition: all 0.25s ease;
+                }
+                .axg-carousel-dot.active {
+                    background: ${color};
+                    width: 18px;
+                    border-radius: 4px;
                 }
                 .axg-product-card:hover { transform: translateY(-2px); }
                 .axg-card-img {
@@ -1001,6 +1021,7 @@ const msgLink = this.config.messenger_link || '';
 
         showTyping() {
             if (this.shadow.getElementById('axg-typing-indicator')) return;
+            this.typingStartTime = Date.now();
             const typing = document.createElement('div');
             typing.id = 'axg-typing-indicator';
             typing.className = 'axg-typing';
@@ -1010,7 +1031,12 @@ const msgLink = this.config.messenger_link || '';
             this.scrollToBottom();
         }
 
-        hideTyping() {
+        async hideTyping() {
+            const minShowMs = 700;
+            const elapsed = Date.now() - (this.typingStartTime || 0);
+            if (elapsed < minShowMs) {
+                await new Promise(r => setTimeout(r, minShowMs - elapsed));
+            }
             const el = this.shadow.getElementById('axg-typing-indicator');
             if (el) el.remove();
         }
@@ -1085,6 +1111,25 @@ const msgLink = this.config.messenger_link || '';
                 carousel.appendChild(this.renderProductCard(prod));
             });
 
+            // Dots pagination container
+            const dotsBar = document.createElement('div');
+            dotsBar.className = 'axg-carousel-dots';
+
+            const dotEls = [];
+            productList.forEach((_, idx) => {
+                const dot = document.createElement('span');
+                dot.className = `axg-carousel-dot${idx === 0 ? ' active' : ''}`;
+                dot.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const cards = carousel.querySelectorAll('.axg-product-card');
+                    if (cards[idx]) {
+                        cards[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    }
+                });
+                dotsBar.appendChild(dot);
+                dotEls.push(dot);
+            });
+
             // Prev & Next navigation buttons
             const prevBtn = document.createElement('button');
             prevBtn.className = 'axg-carousel-nav prev hidden';
@@ -1099,39 +1144,72 @@ const msgLink = this.config.messenger_link || '';
             nextBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
 
             const updateNavState = () => {
+                if (productList.length <= 1) {
+                    dotsBar.classList.add('hidden');
+                } else {
+                    dotsBar.classList.remove('hidden');
+                }
+
                 const maxScroll = carousel.scrollWidth - carousel.clientWidth;
-                if (maxScroll <= 4) {
+                if (carousel.clientWidth > 0 && maxScroll <= 4) {
                     prevBtn.classList.add('hidden');
                     nextBtn.classList.add('hidden');
-                    return;
+                } else if (carousel.clientWidth > 0) {
+                    if (carousel.scrollLeft <= 6) {
+                        prevBtn.classList.add('hidden');
+                    } else {
+                        prevBtn.classList.remove('hidden');
+                    }
+                    if (carousel.scrollLeft >= maxScroll - 6) {
+                        nextBtn.classList.add('hidden');
+                    } else {
+                        nextBtn.classList.remove('hidden');
+                    }
                 }
-                if (carousel.scrollLeft <= 6) {
-                    prevBtn.classList.add('hidden');
-                } else {
-                    prevBtn.classList.remove('hidden');
-                }
-                if (carousel.scrollLeft >= maxScroll - 6) {
-                    nextBtn.classList.add('hidden');
-                } else {
-                    nextBtn.classList.remove('hidden');
+
+                // Determine active product card for dots
+                const cards = carousel.querySelectorAll('.axg-product-card');
+                if (cards.length > 0) {
+                    const carouselCenter = carousel.scrollLeft + carousel.clientWidth / 2;
+                    let closestIdx = 0;
+                    let minDistance = Infinity;
+
+                    cards.forEach((card, idx) => {
+                        const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+                        const dist = Math.abs(carouselCenter - cardCenter);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            closestIdx = idx;
+                        }
+                    });
+
+                    dotEls.forEach((dot, idx) => {
+                        if (idx === closestIdx) {
+                            dot.classList.add('active');
+                        } else {
+                            dot.classList.remove('active');
+                        }
+                    });
                 }
             };
 
             prevBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                carousel.scrollBy({ left: -carousel.clientWidth, behavior: 'smooth' });
+                const cardWidth = carousel.querySelector('.axg-product-card')?.offsetWidth || 215;
+                carousel.scrollBy({ left: -(cardWidth + 12), behavior: 'smooth' });
                 setTimeout(updateNavState, 250);
             });
 
             nextBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                carousel.scrollBy({ left: carousel.clientWidth, behavior: 'smooth' });
+                const cardWidth = carousel.querySelector('.axg-product-card')?.offsetWidth || 215;
+                carousel.scrollBy({ left: cardWidth + 12, behavior: 'smooth' });
                 setTimeout(updateNavState, 250);
             });
 
             carousel.addEventListener('scroll', updateNavState, { passive: true });
 
-            // 1. Mouse Wheel Translation (vertical wheel over carousel scrolls horizontally)
+            // 1. Mouse Wheel Translation
             carousel.addEventListener('wheel', (e) => {
                 if (carousel.scrollWidth > carousel.clientWidth) {
                     if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
@@ -1187,8 +1265,8 @@ const msgLink = this.config.messenger_link || '';
             wrapper.appendChild(prevBtn);
             wrapper.appendChild(carousel);
             wrapper.appendChild(nextBtn);
+            wrapper.appendChild(dotsBar);
 
-            // Update nav state after images load or elements render
             setTimeout(updateNavState, 150);
             setTimeout(updateNavState, 500);
 
@@ -1432,7 +1510,7 @@ openMessenger() {
                     responseData = json.reply;
                 }
 
-                this.hideTyping();
+                await this.hideTyping();
 
                 if (responseData) {
                     this.appendMessage(responseData, 'bot', null, true);
@@ -1443,7 +1521,7 @@ openMessenger() {
 
             } catch (err) {
                 console.error('Chat error:', err);
-                this.hideTyping();
+                await this.hideTyping();
                 const t = this.getTranslations();
                 this.appendMessage(t.error_conn, 'bot', null, false);
             }

@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgai_woo_chat]
- * Version: 2.0.16
+ * Version: 2.0.18
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -298,6 +298,23 @@ function axgai_woo_options_page() {
                             <td>
                                 <input type="text" name="axgai_woo_slug" value="<?php echo esc_attr( get_option('axgai_woo_slug') ); ?>" class="regular-text" style="width: 100%; max-width: 450px;" placeholder="e.g. domainname" required />
                                 <p class="description" style="font-size: 11px;"><?php echo esc_html( $slug_desc ); ?></p>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">AI Persona & System Prompt</th>
+                            <td>
+                                <div style="margin-bottom: 8px;">
+                                    <span style="font-size: 11px; font-weight: bold; color: #555; display: block; margin-bottom: 4px;">Quick Presets:</span>
+                                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                        <button type="button" class="button button-secondary button-small" onclick="document.getElementById('axgai_woo_persona').value='You are an expert sales representative and product specialist. Proactively recommend matching products, highlight active discounts, and guide customers toward closing their purchases.';">🛍️ Pro Sales Representative</button>
+                                        <button type="button" class="button button-secondary button-small" onclick="document.getElementById('axgai_woo_persona').value='You are a patient, friendly, and empathetic customer service assistant. Focus on resolving customer inquiries, explaining policies, and providing order assistance with extreme politeness.';">🎧 Customer Support</button>
+                                        <button type="button" class="button button-secondary button-small" onclick="document.getElementById('axgai_woo_persona').value='You are an exclusive luxury shopping concierge. Speak with an elegant, polished tone and provide personalized recommendations for high-end clientele.';">💎 Luxury Concierge</button>
+                                        <button type="button" class="button button-secondary button-small" onclick="document.getElementById('axgai_woo_persona').value='You are an energetic, fun, and enthusiastic sales assistant! Use engaging tone, emojis, and help customers discover amazing store offers.';">⚡ Energetic & Playful</button>
+                                    </div>
+                                </div>
+                                <textarea name="axgai_woo_persona" id="axgai_woo_persona" rows="3" class="large-text" style="width: 100%; max-width: 450px;" placeholder="Describe your chatbot's role and selling instructions..."><?php echo esc_textarea( get_option('axgai_woo_persona', 'You are an engaging, friendly, and professional AI sales representative and customer support specialist for our WooCommerce store.') ); ?></textarea>
+                                <p class="description" style="font-size: 11px;">Configure custom instructions to guide how Gemini 2.5 Flash answers and sells your products.</p>
                             </td>
                         </tr>
 
@@ -921,8 +938,8 @@ function axgai_woo_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.16' );
-    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.16', true );
+    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.18' );
+    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.18', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
