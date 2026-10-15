@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgai_woo_chat]
- * Version: 2.0.18
+ * Version: 2.0.20
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -302,19 +302,41 @@ function axgai_woo_options_page() {
                         </tr>
 
                         <tr valign="top">
-                            <th scope="row" style="width: 150px; font-weight: bold;">AI Persona & System Prompt</th>
+                            <th scope="row" style="width: 150px; font-weight: bold;">AI Persona & Personality</th>
                             <td>
-                                <div style="margin-bottom: 8px;">
-                                    <span style="font-size: 11px; font-weight: bold; color: #555; display: block; margin-bottom: 4px;">Quick Presets:</span>
-                                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                        <button type="button" class="button button-secondary button-small" onclick="document.getElementById('axgai_woo_persona').value='You are an expert sales representative and product specialist. Proactively recommend matching products, highlight active discounts, and guide customers toward closing their purchases.';">🛍️ Pro Sales Representative</button>
-                                        <button type="button" class="button button-secondary button-small" onclick="document.getElementById('axgai_woo_persona').value='You are a patient, friendly, and empathetic customer service assistant. Focus on resolving customer inquiries, explaining policies, and providing order assistance with extreme politeness.';">🎧 Customer Support</button>
-                                        <button type="button" class="button button-secondary button-small" onclick="document.getElementById('axgai_woo_persona').value='You are an exclusive luxury shopping concierge. Speak with an elegant, polished tone and provide personalized recommendations for high-end clientele.';">💎 Luxury Concierge</button>
-                                        <button type="button" class="button button-secondary button-small" onclick="document.getElementById('axgai_woo_persona').value='You are an energetic, fun, and enthusiastic sales assistant! Use engaging tone, emojis, and help customers discover amazing store offers.';">⚡ Energetic & Playful</button>
+                                <p style="font-size: 13px; font-weight: 600; color: #1d2327; margin: 0 0 8px 0;">Choose Your AI Assistant's Personality:</p>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; max-width: 750px; margin-bottom: 12px;">
+                                    <div onclick="document.getElementById('axgai_woo_persona').value='Du är Jane - en artig, pålitlig och lösningsorienterad AI-rådgivare. Balansera förstklassig kundtjänst med aktiv merförsäljning. Svara gärna: \'Välkommen! Jag hjälper dig gärna att hitta rätt produkt. Den modellen är ett utmärkt val – vill du att jag visar ett populärt tillbehör som passar perfekt till den?\'';" style="border: 1px solid #c3c4c7; border-radius: 8px; padding: 12px; background: #fff; cursor: pointer; transition: all 0.2s;">
+                                        <div style="font-weight: bold; font-size: 13px; margin-bottom: 4px; color: #1d2327;">💼 Jane – The Professional Advisor <span style="background: #e7f6ed; color: #008a20; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 10px; margin-left: 4px;">Recommended</span></div>
+                                        <div style="font-size: 11px; color: #50575e; margin-bottom: 6px;"><strong>Profile:</strong> Polite, trustworthy, solution-oriented. Excellent service & upselling.</div>
+                                        <div style="font-size: 10px; color: #2c3338; font-style: italic; background: #f6f7f7; padding: 6px; border-left: 2px solid #008a20; border-radius: 0 4px 4px 0;">"Welcome! I'd be happy to help you find the right product..."</div>
+                                    </div>
+
+                                    <div onclick="document.getElementById('axgai_woo_persona').value='Du är Leo - en varm, trendig och avslappnad AI-inspiratör. Använd ett vardagligt språk och härliga emojis (👋, 🔥, ✨) för att skapa en personlig relation med kunden. Svara gärna: \'Hej! 👋 Vad roligt att du kikar in! Letar du efter något särskilt idag? Den tröjan är superpopulär just nu! 🔥\'';" style="border: 1px solid #c3c4c7; border-radius: 8px; padding: 12px; background: #fff; cursor: pointer; transition: all 0.2s;">
+                                        <div style="font-weight: bold; font-size: 13px; margin-bottom: 4px; color: #1d2327;">🚀 Leo – The Enthusiastic Inspirer</div>
+                                        <div style="font-size: 11px; color: #50575e; margin-bottom: 6px;"><strong>Profile:</strong> Warm, trendy, casual. Uses everyday language & emojis.</div>
+                                        <div style="font-size: 10px; color: #2c3338; font-style: italic; background: #f6f7f7; padding: 6px; border-left: 2px solid #2271b1; border-radius: 0 4px 4px 0;">"Hi! 👋 So glad you dropped by! Are you looking for anything special today?..."</div>
+                                    </div>
+
+                                    <div onclick="document.getElementById('axgai_woo_persona').value='Du är Sofia - en faktabaserad, tydlig och mycket detaljerad AI-expert. Vägled kunden genom komplexa val och fokusera på tekniska specifikationer, prestanda och pålitlighet framför säljsnack. Svara gärna: \'Hej. Den här modellen har en batteritid på 48 timmar och är IP68-klassad. Jag kan hjälpa dig jämföra specifikationerna med våra andra alternativ om du vill.\'';" style="border: 1px solid #c3c4c7; border-radius: 8px; padding: 12px; background: #fff; cursor: pointer; transition: all 0.2s;">
+                                        <div style="font-weight: bold; font-size: 13px; margin-bottom: 4px; color: #1d2327;">🛠️ Sofia – The Technical Expert</div>
+                                        <div style="font-size: 11px; color: #50575e; margin-bottom: 6px;"><strong>Profile:</strong> Fact-driven, clear, detailed. Focuses on specs & reliability.</div>
+                                        <div style="font-size: 10px; color: #2c3338; font-style: italic; background: #f6f7f7; padding: 6px; border-left: 2px solid #646970; border-radius: 0 4px 4px 0;">"Hello. This model has a battery life of 48 hours..."</div>
+                                    </div>
+
+                                    <div onclick="document.getElementById('axgai_woo_persona').value='Du är Alex - en effektiv, koncis och extremt direkt AI-assistent. Minimera småprat och ge kunden exakta, snabba svar för att påskynda köpet. Svara gärna: \'Hej. Den produkten finns i lager och skickas inom 24 timmar. Här är en direktlänk till kassan. Kan jag hjälpa dig med något mer?\'';" style="border: 1px solid #c3c4c7; border-radius: 8px; padding: 12px; background: #fff; cursor: pointer; transition: all 0.2s;">
+                                        <div style="font-weight: bold; font-size: 13px; margin-bottom: 4px; color: #1d2327;">⚡ Alex – The Quick Fixer</div>
+                                        <div style="font-size: 11px; color: #50575e; margin-bottom: 6px;"><strong>Profile:</strong> Efficient, concise, direct. Fast answers to speed checkout.</div>
+                                        <div style="font-size: 10px; color: #2c3338; font-style: italic; background: #f6f7f7; padding: 6px; border-left: 2px solid #d63638; border-radius: 0 4px 4px 0;">"Hello. That product is in stock and ships within 24 hours..."</div>
                                     </div>
                                 </div>
-                                <textarea name="axgai_woo_persona" id="axgai_woo_persona" rows="3" class="large-text" style="width: 100%; max-width: 450px;" placeholder="Describe your chatbot's role and selling instructions..."><?php echo esc_textarea( get_option('axgai_woo_persona', 'You are an engaging, friendly, and professional AI sales representative and customer support specialist for our WooCommerce store.') ); ?></textarea>
-                                <p class="description" style="font-size: 11px;">Configure custom instructions to guide how Gemini 2.5 Flash answers and sells your products.</p>
+
+                                <button type="button" class="button button-secondary" onclick="var el = document.getElementById('axgai_woo_persona_wrapper'); if(el.style.display==='none'){el.style.display='block';}else{el.style.display='none';} document.getElementById('axgai_woo_persona').focus();" style="margin-bottom: 8px;">✏️ Create a custom profile</button>
+
+                                <div id="axgai_woo_persona_wrapper" style="margin-top: 8px;">
+                                    <textarea name="axgai_woo_persona" id="axgai_woo_persona" rows="3" class="large-text" style="width: 100%; max-width: 750px;" placeholder="Describe your chatbot's role and selling instructions..."><?php echo esc_textarea( get_option('axgai_woo_persona', 'Du är Jane - en artig, pålitlig och lösningsorienterad AI-rådgivare. Balansera förstklassig kundtjänst med aktiv merförsäljning.') ); ?></textarea>
+                                    <p class="description" style="font-size: 11px;">Select a persona card above or click 'Create a custom profile' to write custom brand instructions for Gemini 2.5 Flash.</p>
+                                </div>
                             </td>
                         </tr>
 
@@ -449,13 +471,6 @@ function axgai_woo_options_page() {
                             </td>
                         </tr>
 
-                        <tr valign="top">
-                            <th scope="row" style="width: 150px; font-weight: bold;">Bot Persona & Instructions</th>
-                            <td>
-                                <textarea name="axgai_woo_persona" rows="4" style="width: 100%; max-width: 450px;" placeholder="Describe your store's sales assistant persona..."><?php echo esc_textarea( get_option('axgai_woo_persona', 'You are a friendly, highly intelligent WooCommerce sales assistant. Help visitors find the most suitable products from our catalog, answer questions about availability, pricing, and provide personalized cross-selling suggestions dynamically.') ); ?></textarea>
-                                <p class="description" style="font-size: 11px;"><?php echo esc_html( $persona_desc ); ?></p>
-                            </td>
-                        </tr>
 
                         <tr valign="top">
                             <th scope="row" style="width: 150px; font-weight: bold;">Enable Visual Search (Premium)</th>
@@ -938,8 +953,8 @@ function axgai_woo_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.18' );
-    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.18', true );
+    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.19' );
+    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.19', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
