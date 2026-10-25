@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgai_woo_chat]
- * Version: 2.0.22
+ * Version: 2.0.23
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -193,6 +193,7 @@ function axgai_woo_settings_init() {
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_trigger_inactivity', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_trigger_scroll', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_trigger_exit', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_trigger_cart_nudge', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_quick_question_1', array( 'sanitize_callback' => 'sanitize_text_field' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_quick_question_2', array( 'sanitize_callback' => 'sanitize_text_field' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_quick_question_3', array( 'sanitize_callback' => 'sanitize_text_field' ) );
@@ -466,6 +467,17 @@ function axgai_woo_options_page() {
                                     <textarea name="axgai_woo_persona" id="axgai_woo_persona" rows="3" class="large-text" style="width: 100%; max-width: 750px;" placeholder="Describe your chatbot's role and selling instructions..."><?php echo esc_textarea( get_option('axgai_woo_persona', 'Du är Jane - en artig, pålitlig och lösningsorienterad AI-rådgivare. Balansera förstklassig kundtjänst med aktiv merförsäljning.') ); ?></textarea>
                                     <p class="description" style="font-size: 11px;">Select a persona card above or click 'Create a custom profile' to write custom brand instructions for Gemini 2.5 Flash.</p>
                                 </div>
+
+                                <!-- 1-Click Add Q&A Box directly on Settings page -->
+                                <div style="margin-top: 12px; max-width: 750px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 14px;">
+                                    <div style="font-weight: 700; font-size: 12.5px; color: #92400e; margin-bottom: 4px;">🧠 1-Klicks AI-Träning: Lägg till Fråga &amp; Svar i AI-instruktionerna <span style="background:#f59e0b;color:#fff;font-size:10px;padding:2px 6px;border-radius:99px;margin-left:4px;">NEW</span></div>
+                                    <p style="margin: 0 0 8px 0; font-size: 11.5px; color: #78350f;">Skriv in en vanlig kundfråga och exakt hur du vill att AI:n ska svara, och klicka på <strong>➕ Lägg till svar</strong> (spara sedan inställningarna):</p>
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <input type="text" id="axgai_woo_quick_qa_q" placeholder="Kundfråga (t.ex. Har ni fri retur?)" style="flex: 1; min-width: 180px; font-size: 12px;" />
+                                        <input type="text" id="axgai_woo_quick_qa_a" placeholder="Svar (t.ex. Ja, 30 dagars öppet köp!)" style="flex: 2; min-width: 220px; font-size: 12px;" />
+                                        <button type="button" class="button button-secondary" style="background: #d97706; border-color: #d97706; color: #fff; font-weight: 600;" onclick="var q=document.getElementById('axgai_woo_quick_qa_q'),a=document.getElementById('axgai_woo_quick_qa_a'),p=document.getElementById('axgai_woo_persona');if(q.value.trim()&&a.value.trim()){p.value=(p.value.trim()+'\n- Kundfråga: &quot;'+q.value.trim()+'&quot; -> Svara: '+a.value.trim()).trim();q.value='';a.value='';document.getElementById('axgai_woo_persona_wrapper').style.display='block';}">➕ Lägg till svar</button>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
 
@@ -595,6 +607,10 @@ function axgai_woo_options_page() {
                                 <label style="display: block; margin-bottom: 10px; font-size: 13px;">
                                     <input type="checkbox" name="axgai_woo_trigger_exit" value="1" <?php checked( 1, get_option('axgai_woo_trigger_exit', 0) ); ?> style="margin-right: 8px;" />
                                     <?php echo esc_html( $trigger_exit_lbl ); ?>
+                                </label>
+                                <label style="display: block; margin-bottom: 10px; font-size: 13px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 8px 12px; border-radius: 6px; color: #065f46; font-weight: 600;">
+                                    <input type="checkbox" name="axgai_woo_trigger_cart_nudge" value="1" <?php checked( 1, get_option('axgai_woo_trigger_cart_nudge', 1) ); ?> style="margin-right: 8px;" />
+                                    🛍️ <?php echo $language === 'sv' ? 'Smart "Rädda övergiven varukorg"-trigger (25s) - Frågar kunden i varukorg/kassa om de behöver hjälp med frakt, retur eller storlek.' : 'Smart Cart Abandonment Nudge (25s) - Proactively offers help on /cart and /checkout after 25 seconds.'; ?> <span style="background:#10b981;color:#fff;font-size:10px;padding:2px 6px;border-radius:99px;margin-left:4px;">NEW</span>
                                 </label>
                                 <p class="description" style="font-size: 11px; margin-top: 10px;"><?php echo esc_html( $triggers_desc ); ?></p>
                             </td>
@@ -1043,10 +1059,11 @@ function axgai_woo_insights_page() {
             </div>
         </div>
 
-        <?php if ( ! empty( $knowledge_gaps ) ) : ?>
-            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;">
-                <div style="font-weight: 700; font-size: 13px; color: #92400e; margin-bottom: 6px;">🧠 Identifierade Kunskapsluckor — Gör AI-boten smartare med 1 klick</div>
-                <p style="font-size: 12px; color: #78350f; margin: 0 0 12px 0;">Vid dessa kundfrågor hänvisade AI:n till kundtjänst. Skriv in rätt svar nedan så lär sig assistenten det direkt:</p>
+        <!-- Always-visible 1-Click AI Training & Identified Knowledge Gaps -->
+        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;">
+            <div style="font-weight: 700; font-size: 13px; color: #92400e; margin-bottom: 6px;">🧠 1-Klicks AI-Träning &amp; Identifierade Kunskapsluckor ("Lägg till svar i AI-instruktionerna") <span style="background:#f59e0b;color:#fff;font-size:10px;padding:2px 6px;border-radius:99px;margin-left:4px;">NEW</span></div>
+            <p style="font-size: 12px; color: #78350f; margin: 0 0 12px 0;">Lägg till nya svar i AI-assistenten med 1 klick! Eventuella frågor där AI:n hänvisat till kundtjänst listas nedan — eller skriv in valfri Fråga &amp; Svar direkt:</p>
+            <?php if ( ! empty( $knowledge_gaps ) ) : ?>
                 <?php foreach ( $knowledge_gaps as $gap_q ) : ?>
                     <form method="post" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; background: #ffffff; padding: 8px 12px; border-radius: 6px; border: 1px solid #fcd34d;">
                         <?php wp_nonce_field( 'axgai_woo_add_knowledge_nonce' ); ?>
@@ -1056,8 +1073,14 @@ function axgai_woo_insights_page() {
                         <button type="submit" name="axgai_add_knowledge_submit" value="1" class="button button-small button-primary" style="background: #d97706; border-color: #d97706; font-weight: 600;">➕ Lägg till i AI-instruktionerna</button>
                     </form>
                 <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
+            <?php endif; ?>
+            <form method="post" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #ffffff; padding: 10px 12px; border-radius: 6px; border: 1px solid #fcd34d;">
+                <?php wp_nonce_field( 'axgai_woo_add_knowledge_nonce' ); ?>
+                <input type="text" name="gap_question" placeholder="Kundfråga (t.ex. Har ni fri retur?)" required style="flex: 1; min-width: 200px; font-size: 12px; padding: 6px 10px;" />
+                <input type="text" name="gap_answer" placeholder="Svaret som AI:n ska ge (t.ex. Ja, 30 dagars fri retur!)" required style="flex: 2; min-width: 260px; font-size: 12px; padding: 6px 10px;" />
+                <button type="submit" name="axgai_add_knowledge_submit" value="1" class="button button-small button-primary" style="background: #d97706; border-color: #d97706; font-weight: 600;">➕ Lägg till svar i AI-instruktionerna</button>
+            </form>
+        </div>
 
         <?php if ( ! empty($sessions) ) : ?>
             <div style="margin: 15px 0;">
@@ -1180,8 +1203,8 @@ function axgai_woo_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.22' );
-    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.22', true );
+    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.23' );
+    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.23', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
@@ -1222,6 +1245,7 @@ function axgai_woo_enqueue_assets() {
         'trigger_inactivity' => (int) get_option('axgai_woo_trigger_inactivity', 0),
         'trigger_scroll'     => (int) get_option('axgai_woo_trigger_scroll', 0),
         'trigger_exit'       => (int) get_option('axgai_woo_trigger_exit', 0),
+        'trigger_cart_nudge' => (int) get_option('axgai_woo_trigger_cart_nudge', 1),
         'is_woocommerce'     => true,
         'whatsapp_number'    => esc_js( get_option('axgai_woo_whatsapp_number', '') ),
         'messenger_link'     => esc_url( get_option('axgai_woo_messenger_link', '') ),
