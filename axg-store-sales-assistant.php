@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgai_woo_chat]
- * Version: 2.0.20
+ * Version: 2.0.22
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -40,6 +40,102 @@ function axgai_woo_activate_plugin() {
 
     require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
     dbDelta( $sql );
+
+    // Zero-Config Auto-Connect on activation
+    axgai_woo_try_auto_connect( false );
+}
+
+/**
+ * Zero-Config Auto-Connect: Automatically fetches existing outreach Agent ID / Slug / Brand Color
+ * for this domain or provisions a ready-to-use agent on activation.
+ */
+function axgai_woo_try_auto_connect( $force = false ) {
+    $existing_agent = get_option( 'axgai_woo_agent_id', '' );
+    if ( ! empty( $existing_agent ) && ! $force ) {
+        return true;
+    }
+
+    $site_url    = get_site_url();
+    $site_name   = get_bloginfo( 'name' );
+    $admin_email = get_option( 'admin_email', '' );
+    $locale      = function_exists( 'get_locale' ) ? get_locale() : 'sv_SE';
+
+    $response = wp_remote_post( 'https://europe-west3-wp-vertex-chatbot.cloudfunctions.net/generate_demo_chatbot?action=auto_connect_wp', array(
+        'method'    => 'POST',
+        'headers'   => array( 'Content-Type' => 'application/json' ),
+        'body'      => wp_json_encode( array(
+            'action'      => 'auto_connect_wp',
+            'site_url'    => $site_url,
+            'site_name'   => $site_name,
+            'admin_email' => $admin_email,
+            'language'    => substr( strtolower( $locale ), 0, 2 ),
+        ) ),
+        'timeout'   => 12,
+        'sslverify' => true,
+    ) );
+
+    if ( is_wp_error( $response ) ) {
+        return false;
+    }
+
+    $data = json_decode( wp_remote_retrieve_body( $response ), true );
+    if ( is_array( $data ) && ! empty( $data['ok'] ) && ! empty( $data['agent_id'] ) ) {
+        update_option( 'axgai_woo_agent_id', sanitize_text_field( $data['agent_id'] ) );
+        if ( ! empty( $data['slug'] ) ) {
+            update_option( 'axgai_woo_slug', sanitize_text_field( $data['slug'] ) );
+        }
+        if ( ! empty( $data['color_theme'] ) && ( $force || ! get_option( 'axgai_woo_color_theme' ) ) ) {
+            $clean_hex = sanitize_hex_color( $data['color_theme'] );
+            if ( $clean_hex ) {
+                update_option( 'axgai_woo_color_theme', $clean_hex );
+            }
+        }
+        if ( ! empty( $data['chat_title'] ) && ( $force || ! get_option( 'axgai_woo_chat_title' ) ) ) {
+            update_option( 'axgai_woo_chat_title', sanitize_text_field( $data['chat_title'] ) );
+        }
+        if ( ! empty( $data['language'] ) && ! get_option( 'axgai_woo_language' ) ) {
+            update_option( 'axgai_woo_language', sanitize_text_field( $data['language'] ) );
+        }
+        update_option( 'axgai_woo_auto_connected', ! empty( $data['matched'] ) ? 'matched' : 'created' );
+        return true;
+    }
+    return false;
+}
+
+// --- Step 1B: AI-Assisted Revenue & ROI Attribution Tracking ---
+add_action( 'woocommerce_checkout_order_processed', 'axgai_woo_track_assisted_order', 10, 1 );
+add_action( 'woocommerce_store_api_checkout_order_processed', 'axgai_woo_track_assisted_order', 10, 1 );
+
+function axgai_woo_track_assisted_order( $order_id_or_obj ) {
+    if ( empty( $_COOKIE['axgai_assisted'] ) || $_COOKIE['axgai_assisted'] !== '1' ) {
+        return;
+    }
+    if ( ! function_exists( 'wc_get_order' ) ) {
+        return;
+    }
+    $order = is_object( $order_id_or_obj ) ? $order_id_or_obj : wc_get_order( $order_id_or_obj );
+    if ( ! $order || ! is_a( $order, 'WC_Order' ) ) {
+        return;
+    }
+    // Prevent duplicate counting if both classic and block hooks fire
+    if ( $order->get_meta( '_axgai_assisted_order' ) === 'yes' ) {
+        return;
+    }
+
+    $session_id  = isset( $_COOKIE['axgai_session_id'] ) ? sanitize_text_field( wp_unslash( $_COOKIE['axgai_session_id'] ) ) : '';
+    $order_total = (float) $order->get_total();
+
+    $order->update_meta_data( '_axgai_assisted_order', 'yes' );
+    if ( ! empty( $session_id ) ) {
+        $order->update_meta_data( '_axgai_session_id', $session_id );
+    }
+    $order->save();
+
+    $total_rev   = (float) get_option( 'axgai_woo_roi_total_revenue', 0 );
+    $order_count = (int) get_option( 'axgai_woo_roi_order_count', 0 );
+
+    update_option( 'axgai_woo_roi_total_revenue', $total_rev + $order_total );
+    update_option( 'axgai_woo_roi_order_count', $order_count + 1 );
 }
 
 // --- Step 2: Register Settings & Admin Menu ---
@@ -248,6 +344,24 @@ function axgai_woo_options_page() {
     $client_slug = get_option('axgai_woo_slug', '');
     $client_email = get_option('axgai_woo_contact_email', get_option('admin_email', ''));
 
+    // Handle 1-Click manual or automatic Zero-Config Auto-Connect
+    $auto_connect_notice = '';
+    if ( isset( $_GET['axgai_auto_connect'] ) && check_admin_referer( 'axgai_woo_auto_connect_nonce' ) ) {
+        if ( axgai_woo_try_auto_connect( true ) ) {
+            $client_slug = get_option( 'axgai_woo_slug', '' );
+            $auto_connect_notice = $language === 'sv'
+                ? '✅ Zero-Config Auto-Connect slutförd! Ditt Agent ID, Slug och Färgtema har hämtats automatiskt och chatten är nu 100 % aktiv i din butik.'
+                : '✅ Zero-Config Auto-Connect completed! Your Agent ID, Slug, and Color Theme were automatically configured and the chat is now 100% live.';
+        }
+    } elseif ( empty( get_option( 'axgai_woo_agent_id', '' ) ) ) {
+        if ( axgai_woo_try_auto_connect( false ) ) {
+            $client_slug = get_option( 'axgai_woo_slug', '' );
+            $auto_connect_notice = $language === 'sv'
+                ? '✨ Din butik har kopplats automatiskt (Zero-Config)! Ditt Agent ID och Slug har hämtats för din domän – chatten är redo direkt.'
+                : '✨ Your store was connected automatically (Zero-Config)! Your Agent ID and Slug were fetched for your domain — the chatbot is ready immediately.';
+        }
+    }
+
     $bronze_link = "https://checkout.axelsson.graphics/28EaF0fir3cGaDIfhWfMA03";
     $silver_link = "https://checkout.axelsson.graphics/5kQ9AW0nx3cGeTY8TyfMA04";
     $gold_link = "https://checkout.axelsson.graphics/8x2eVg7PZ14yeTYedSfMA05";
@@ -268,11 +382,26 @@ function axgai_woo_options_page() {
     <div class="wrap" style="max-width: 1200px;">
         <h2><?php echo esc_html( $page_title ); ?></h2>
 
-        <!-- Onboarding Box -->
-        <div class="notice notice-info" style="margin: 20px 0; padding: 15px; border-left-color: #007bff; background-color: #fbfdff; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
-            <p style="font-size: 14px; margin: 0 0 10px 0; font-weight: bold; color: #007bff;"><?php echo esc_html( $onboarding_title ); ?></p>
-            <p style="font-size: 13px; margin: 0 0 15px 0; line-height: 1.5; color: #555555;"><?php echo esc_html( $onboarding_desc ); ?></p>
-            <a href="<?php echo esc_url( $onboarding_url ); ?>" target="_blank" class="button button-primary" style="background-color: #007bff; border-color: #007bff; font-weight: bold; text-shadow: none;"><?php echo esc_html( $onboarding_btn ); ?></a>
+        <?php if ( ! empty( $auto_connect_notice ) ) : ?>
+            <div class="notice notice-success is-dismissible" style="margin: 15px 0; padding: 12px 15px; border-left-color: #10b981; background: #ecfdf5; border-radius: 6px;">
+                <p style="margin: 0; font-weight: bold; color: #065f46;"><?php echo esc_html( $auto_connect_notice ); ?></p>
+            </div>
+        <?php endif; ?>
+
+        <!-- Onboarding & Zero-Config Auto-Connect Box -->
+        <div class="notice notice-info" style="margin: 20px 0; padding: 15px; border-left-color: #007bff; background-color: #fbfdff; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div style="flex: 1; min-width: 280px;">
+                <p style="font-size: 14px; margin: 0 0 8px 0; font-weight: bold; color: #007bff;"><?php echo esc_html( $onboarding_title ); ?></p>
+                <p style="font-size: 13px; margin: 0; line-height: 1.5; color: #555555;"><?php echo esc_html( $onboarding_desc ); ?></p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="<?php echo esc_url( wp_nonce_url( add_query_arg( 'axgai_auto_connect', '1' ), 'axgai_woo_auto_connect_nonce' ) ); ?>" class="button button-primary" style="background-color: #10b981; border-color: #10b981; font-weight: bold; text-shadow: none;">
+                    ⚡ <?php echo $language === 'sv' ? 'Auto-Koppla Butik (1 klick)' : 'Auto-Connect Store (1-Click)'; ?>
+                </a>
+                <a href="<?php echo esc_url( $onboarding_url ); ?>" target="_blank" class="button button-secondary" style="font-weight: bold;">
+                    <?php echo esc_html( $onboarding_btn ); ?>
+                </a>
+            </div>
         </div>
 
         <div style="margin-top: 20px;">
@@ -814,6 +943,19 @@ function axgai_woo_insights_page() {
     }
 
     // Standard Conversations Listing
+    // Handle 1-Click Knowledge Gap Training submission
+    $knowledge_added_notice = '';
+    if ( isset( $_POST['axgai_add_knowledge_submit'] ) && check_admin_referer( 'axgai_woo_add_knowledge_nonce' ) ) {
+        $q_text = isset( $_POST['gap_question'] ) ? sanitize_text_field( wp_unslash( $_POST['gap_question'] ) ) : '';
+        $a_text = isset( $_POST['gap_answer'] ) ? sanitize_textarea_field( wp_unslash( $_POST['gap_answer'] ) ) : '';
+        if ( ! empty( $q_text ) && ! empty( $a_text ) ) {
+            $cur_persona = get_option( 'axgai_woo_persona', '' );
+            $new_rule    = "\n- Kundfråga: \"" . $q_text . "\" -> Svara: " . $a_text;
+            update_option( 'axgai_woo_persona', trim( $cur_persona . $new_rule ) );
+            $knowledge_added_notice = '✅ Svaret har lagts till i AI-instruktionerna! Assistenten kan nu svara på frågan direkt.';
+        }
+    }
+
     // Group logs by session_id and fetch count & latest timestamp
     // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
     $sessions = $wpdb->get_results( "
@@ -824,13 +966,98 @@ function axgai_woo_insights_page() {
         LIMIT 30
     " );
 
+    // ROI & Store Metrics Calculation
+    $roi_revenue    = (float) get_option( 'axgai_woo_roi_total_revenue', 0 );
+    $roi_orders     = (int) get_option( 'axgai_woo_roi_order_count', 0 );
+    $formatted_rev  = function_exists( 'wc_price' ) ? wp_kses_post( wc_price( $roi_revenue ) ) : esc_html( number_format_i18n( $roi_revenue, 0 ) . ' kr' );
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+    $total_bot_msgs = (int) $wpdb->get_var( "SELECT COUNT(id) FROM {$table_name} WHERE sender = 'bot'" );
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+    $total_sessions = (int) $wpdb->get_var( "SELECT COUNT(DISTINCT session_id) FROM {$table_name}" );
+    $hours_saved    = round( ( $total_bot_msgs * 3 ) / 60, 1 );
+
+    // Detect Knowledge Gaps (questions where bot referred to human support/email)
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+    $recent_rows = $wpdb->get_results( "SELECT session_id, sender, message, timestamp FROM {$table_name} ORDER BY id ASC LIMIT 200" );
+    $knowledge_gaps = array();
+    $prev_user_msg  = array();
+    if ( ! empty( $recent_rows ) ) {
+        foreach ( $recent_rows as $r ) {
+            if ( $r->sender === 'user' ) {
+                $prev_user_msg[ $r->session_id ] = $r->message;
+            } elseif ( $r->sender === 'bot' && ! empty( $prev_user_msg[ $r->session_id ] ) ) {
+                $low_reply = strtolower( $r->message );
+                if (
+                    strpos( $low_reply, 'kontakta' ) !== false ||
+                    strpos( $low_reply, 'kundtjänst' ) !== false ||
+                    strpos( $low_reply, 'support@' ) !== false ||
+                    strpos( $low_reply, 'hej@' ) !== false ||
+                    strpos( $low_reply, 'har tyvärr inte' ) !== false ||
+                    strpos( $low_reply, 'contact us' ) !== false
+                ) {
+                    $q_candidate = trim( $prev_user_msg[ $r->session_id ] );
+                    if ( strlen( $q_candidate ) > 5 && ! isset( $knowledge_gaps[ md5( $q_candidate ) ] ) ) {
+                        $knowledge_gaps[ md5( $q_candidate ) ] = $q_candidate;
+                    }
+                }
+            }
+        }
+    }
+    $knowledge_gaps = array_slice( array_values( array_reverse( $knowledge_gaps ) ), 0, 3 );
+
     $active_session = isset($_GET['session_id']) ? sanitize_text_field($_GET['session_id']) : '';
     ?>
     <div class="wrap" style="max-width: 1200px;">
-        <h2>📊 WooCommerce Conversation Insights</h2>
-        <p class="description" style="margin-bottom: 20px;">
-            Access all customer interactions in real-time, analyze exact queries, and optimize your conversion strategy.
+        <h2>📊 WooCommerce Conversation Insights & ROI</h2>
+        <p class="description" style="margin-bottom: 18px;">
+            Följ intjänade kronor från AI-assisterade köp, analysera kundernas frågor i realtid och träna assistenten med 1 klick.
         </p>
+
+        <?php if ( ! empty( $knowledge_added_notice ) ) : ?>
+            <div class="notice notice-success is-dismissible" style="margin: 12px 0; padding: 10px 14px; border-left-color: #10b981;">
+                <p style="margin: 0; font-weight: bold; color: #065f46;"><?php echo esc_html( $knowledge_added_notice ); ?></p>
+            </div>
+        <?php endif; ?>
+
+        <!-- ROI & Conversion Metrics Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 22px;">
+            <div style="background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%); border: 1px solid #a7f3d0; border-radius: 10px; padding: 18px; box-shadow: 0 2px 6px rgba(16,185,129,0.06);">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #047857; letter-spacing: 0.4px;">💰 AI-Genererad Försäljning (ROI)</div>
+                <div style="font-size: 26px; font-weight: 800; color: #065f46; margin: 6px 0 4px 0;"><?php echo $formatted_rev; ?></div>
+                <div style="font-size: 11px; color: #059669;">Från <strong><?php echo esc_html( $roi_orders ); ?></strong> AI-assisterade köp</div>
+            </div>
+            <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #4b5563; letter-spacing: 0.4px;">🛒 Assisterade Ordrar</div>
+                <div style="font-size: 26px; font-weight: 800; color: #111827; margin: 6px 0 4px 0;"><?php echo esc_html( $roi_orders ); ?> st</div>
+                <div style="font-size: 11px; color: #6b7280;">Köp efter produktklick / varukorg i chatt</div>
+            </div>
+            <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #4b5563; letter-spacing: 0.4px;">💬 Hanterade Kundchattar</div>
+                <div style="font-size: 26px; font-weight: 800; color: #2563eb; margin: 6px 0 4px 0;"><?php echo esc_html( $total_sessions ); ?></div>
+                <div style="font-size: 11px; color: #6b7280;"><?php echo esc_html( $total_bot_msgs ); ?> automatiska AI-svar levererade</div>
+            </div>
+            <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #4b5563; letter-spacing: 0.4px;">⏱️ Sparad Supporttid</div>
+                <div style="font-size: 26px; font-weight: 800; color: #7c3aed; margin: 6px 0 4px 0;"><?php echo esc_html( $hours_saved ); ?> tim</div>
+                <div style="font-size: 11px; color: #6b7280;">Uppskattad besparing (3 min / ärende)</div>
+            </div>
+        </div>
+
+        <?php if ( ! empty( $knowledge_gaps ) ) : ?>
+            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;">
+                <div style="font-weight: 700; font-size: 13px; color: #92400e; margin-bottom: 6px;">🧠 Identifierade Kunskapsluckor — Gör AI-boten smartare med 1 klick</div>
+                <p style="font-size: 12px; color: #78350f; margin: 0 0 12px 0;">Vid dessa kundfrågor hänvisade AI:n till kundtjänst. Skriv in rätt svar nedan så lär sig assistenten det direkt:</p>
+                <?php foreach ( $knowledge_gaps as $gap_q ) : ?>
+                    <form method="post" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; background: #ffffff; padding: 8px 12px; border-radius: 6px; border: 1px solid #fcd34d;">
+                        <?php wp_nonce_field( 'axgai_woo_add_knowledge_nonce' ); ?>
+                        <input type="hidden" name="gap_question" value="<?php echo esc_attr( $gap_q ); ?>" />
+                        <span style="font-size: 12px; font-weight: 600; color: #1f2937; min-width: 220px; flex: 1;">❓ "<?php echo esc_html( $gap_q ); ?>"</span>
+                        <input type="text" name="gap_answer" placeholder="Skriv svaret som AI:n ska ge..." required style="flex: 2; min-width: 240px; font-size: 12px; padding: 5px 10px;" />
+                        <button type="submit" name="axgai_add_knowledge_submit" value="1" class="button button-small button-primary" style="background: #d97706; border-color: #d97706; font-weight: 600;">➕ Lägg till i AI-instruktionerna</button>
+                    </form>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
 
         <?php if ( ! empty($sessions) ) : ?>
             <div style="margin: 15px 0;">
@@ -953,8 +1180,8 @@ function axgai_woo_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.19' );
-    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.19', true );
+    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.22' );
+    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.22', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
@@ -996,7 +1223,11 @@ function axgai_woo_enqueue_assets() {
         'trigger_scroll'     => (int) get_option('axgai_woo_trigger_scroll', 0),
         'trigger_exit'       => (int) get_option('axgai_woo_trigger_exit', 0),
         'is_woocommerce'     => true,
-        'enable_image_upload' => get_option('axgai_woo_enable_image_upload', 0)
+        'whatsapp_number'    => esc_js( get_option('axgai_woo_whatsapp_number', '') ),
+        'messenger_link'     => esc_url( get_option('axgai_woo_messenger_link', '') ),
+        'enable_image_upload' => get_option('axgai_woo_enable_image_upload', 0),
+        'enable_eye_tracking' => get_option('axgai_woo_enable_eye_tracking', 1),
+        'enable_voice_input'  => get_option('axgai_woo_enable_voice_input', 1)
     ));
 }
 

@@ -34,7 +34,9 @@
         contact_email: 'support@axelsson.graphics',
         quick_questions: [],
         cur_product: null,
-        is_woocommerce: true
+        is_woocommerce: true,
+        enable_eye_tracking: true,
+        enable_voice_input: true
     };
 
     class AxgChatWidget {
@@ -42,9 +44,17 @@
             let pluginOpts = {};
             if (window.axgai_woo_settings) {
                 pluginOpts = { ...window.axgai_woo_settings };
-                if (pluginOpts.chat_title) pluginOpts.title = pluginOpts.chat_title;
-                if (pluginOpts.color_theme) pluginOpts.theme_color = pluginOpts.color_theme;
-                if (pluginOpts.avatar_url) pluginOpts.avatar = pluginOpts.avatar_url;
+            } else if (window.axgai_settings) {
+                pluginOpts = { ...window.axgai_settings };
+            }
+            if (pluginOpts.chat_title) pluginOpts.title = pluginOpts.chat_title;
+            if (pluginOpts.color_theme) pluginOpts.theme_color = pluginOpts.color_theme;
+            if (pluginOpts.avatar_url) pluginOpts.avatar = pluginOpts.avatar_url;
+            if (typeof pluginOpts.enable_eye_tracking !== 'undefined') {
+                pluginOpts.enable_eye_tracking = pluginOpts.enable_eye_tracking !== 0 && pluginOpts.enable_eye_tracking !== '0' && pluginOpts.enable_eye_tracking !== false;
+            }
+            if (typeof pluginOpts.enable_voice_input !== 'undefined') {
+                pluginOpts.enable_voice_input = pluginOpts.enable_voice_input !== 0 && pluginOpts.enable_voice_input !== '0' && pluginOpts.enable_voice_input !== false;
             }
             this.config = Object.assign({}, DEFAULT_CONFIG, pluginOpts, window.AXG_WIDGET_CONFIG || {}, userConfig);
             this.isOpen = false;
@@ -92,10 +102,13 @@
 
             // Cache DOM elements inside shadow
             this.bubble = this.shadow.getElementById('axg-bubble');
+            this.eyesContainer = this.shadow.getElementById('axg-eyes-container');
+            this.defaultIcon = this.shadow.getElementById('axg-default-icon');
             this.window = this.shadow.getElementById('axg-window');
             this.messagesContainer = this.shadow.getElementById('axg-messages');
             this.input = this.shadow.getElementById('axg-input');
             this.sendBtn = this.shadow.getElementById('axg-send-btn');
+            this.micBtn = this.shadow.getElementById('axg-mic-btn');
             this.cameraBtn = this.shadow.getElementById('axg-camera-btn');
             this.fileInput = this.shadow.getElementById('axg-file-input');
             this.imagePreviewBar = this.shadow.getElementById('axg-image-preview-bar');
@@ -108,6 +121,16 @@
             this.bindEvents();
             this.renderHistoryOrGreeting();
             this.checkExitIntent();
+            this.checkCartAbandonmentNudge();
+        }
+
+        markAssistedSession() {
+            try {
+                document.cookie = 'axgai_assisted=1; path=/; max-age=604800; SameSite=Lax';
+                if (this.sessionId) {
+                    document.cookie = 'axgai_session_id=' + encodeURIComponent(this.sessionId) + '; path=/; max-age=604800; SameSite=Lax';
+                }
+            } catch (e) {}
         }
 
         getTranslations() {
@@ -201,11 +224,43 @@
                     transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
                     z-index: 9999999;
                 }
+                #axg-bubble.axg-mascot-active {
+                    width: 66px;
+                    height: 66px;
+                    background: transparent !important;
+                    border-radius: 0;
+                    box-shadow: none !important;
+                    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.22));
+                }
                 #axg-bubble:hover {
                     transform: scale(1.08);
-                    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
                 }
-                #axg-bubble svg { width: 30px; height: 30px; fill: currentColor; }
+                #axg-bubble svg.axg-default-icon { width: 30px; height: 30px; fill: currentColor; }
+                .axg-eyes-container {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 100%;
+                    height: 100%;
+                    pointer-events: none;
+                    user-select: none;
+                }
+                .axg-mascot-svg {
+                    width: 64px;
+                    height: 64px;
+                }
+                .axg-pupil-group {
+                    transition: transform 0.04s ease-out;
+                }
+                .axg-mic-btn.axg-listening {
+                    color: #ef4444 !important;
+                    animation: axgPulseMic 1.2s infinite;
+                }
+                @keyframes axgPulseMic {
+                    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+                    70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+                    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+                }
 
                 /* Chat Window Container */
                 #axg-window {
@@ -749,6 +804,7 @@
 
         getTemplate() {
             const t = this.getTranslations();
+            const color = this.config.theme_color || '#06b6d4';
             const waNumber = this.config.whatsapp_number ? this.config.whatsapp_number.replace(/[^0-9]/g, '') : '';
 const msgLink = this.config.messenger_link || '';
             const msgButtonHtml = msgLink ? `
@@ -766,7 +822,23 @@ const msgLink = this.config.messenger_link || '';
             return `
             <!-- Floating Bubble -->
             <div id="axg-bubble" role="button" aria-label="Open chat assistant">
-                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+                <div id="axg-eyes-container" class="axg-eyes-container" style="display:none;">
+                    <svg class="axg-mascot-svg" width="36" height="36" viewBox="0 0 32 32" fill="none">
+                      <path class="axg-mascot-bubble-path" d="M16 3C8.82 3 3 8.37 3 15C3 18.23 4.38 21.15 6.68 23.32L5 28.5L10.63 26.85C12.27 27.59 14.08 28 16 28C23.18 28 29 22.63 29 15C29 8.37 23.18 3 16 3Z" fill="${color}" />
+                      <circle cx="11.5" cy="13.5" r="3.2" fill="white" />
+                      <g class="axg-pupil-group">
+                        <circle cx="11.5" cy="13.5" r="1.7" fill="#0f172a" />
+                        <circle cx="12.2" cy="12.8" r="0.6" fill="white" />
+                      </g>
+                      <circle cx="20.5" cy="13.5" r="3.2" fill="white" />
+                      <g class="axg-pupil-group">
+                        <circle cx="20.5" cy="13.5" r="1.7" fill="#0f172a" />
+                        <circle cx="21.2" cy="12.8" r="0.6" fill="white" />
+                      </g>
+                      <path d="M13.2 18.8 C 14.5 20.8, 17.5 20.8, 18.8 18.8" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none" />
+                    </svg>
+                </div>
+                <svg id="axg-default-icon" class="axg-default-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
             </div>
 
             <!-- Chat Window -->
@@ -820,6 +892,14 @@ const msgLink = this.config.messenger_link || '';
                         ` : ''}
 
                         <input type="text" id="axg-input" class="axg-input" placeholder="${t.placeholder}">
+
+                        <button id="axg-mic-btn" class="axg-action-btn axg-mic-btn" type="button" title="Röstinmatning" style="display:none;">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                <line x1="12" y1="19" x2="12" y2="22"></line>
+                            </svg>
+                        </button>
 
                         <button id="axg-send-btn" class="axg-action-btn axg-send-btn" title="${t.send}">
                             <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
@@ -890,11 +970,141 @@ const msgLink = this.config.messenger_link || '';
                     }
                 });
             }
+
+            this.updateToggleBtnState();
+            this.initEyeTracking();
+            this.initVoiceInput();
+        }
+
+        updateToggleBtnState() {
+            const isMascotEnabled = !!this.config.enable_eye_tracking;
+            if (isMascotEnabled) {
+                this.bubble.classList.add('axg-mascot-active');
+            } else {
+                this.bubble.classList.remove('axg-mascot-active');
+            }
+
+            if (this.isOpen) {
+                if (this.eyesContainer) this.eyesContainer.style.display = 'none';
+                if (this.defaultIcon) this.defaultIcon.style.display = 'none';
+            } else {
+                if (isMascotEnabled) {
+                    if (this.eyesContainer) this.eyesContainer.style.display = 'flex';
+                    if (this.defaultIcon) this.defaultIcon.style.display = 'none';
+                } else {
+                    if (this.eyesContainer) this.eyesContainer.style.display = 'none';
+                    if (this.defaultIcon) this.defaultIcon.style.display = 'block';
+                }
+            }
+        }
+
+        initEyeTracking() {
+            if (!this.config.enable_eye_tracking) return;
+            window.addEventListener('mousemove', (e) => {
+                if (this.isOpen) {
+                    const pupilGroups = this.shadow.querySelectorAll('.axg-pupil-group');
+                    pupilGroups.forEach(group => group.style.transform = 'translate(0px, 0px)');
+                    return;
+                }
+
+                const pupilGroups = this.shadow.querySelectorAll('.axg-pupil-group');
+                pupilGroups.forEach(group => {
+                    const rect = group.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+
+                    const dx = e.clientX - centerX;
+                    const dy = e.clientY - centerY;
+
+                    const angle = Math.atan2(dy, dx);
+                    const distance = Math.hypot(dx, dy);
+
+                    const maxOffset = 1.4;
+                    const offset = Math.min(distance / 20, maxOffset);
+
+                    const pupilX = Math.cos(angle) * offset;
+                    const pupilY = Math.sin(angle) * offset;
+
+                    group.style.transform = `translate(${pupilX}px, ${pupilY}px)`;
+                });
+            });
+        }
+
+        initVoiceInput() {
+            if (!this.micBtn) return;
+            if (!this.config.enable_voice_input) {
+                this.micBtn.style.display = 'none';
+                return;
+            }
+            this.micBtn.style.display = 'flex';
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                this.micBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    alert(this.config.language === 'sv' ? "Röstinmatning stöds inte i denna webbläsare." : "Voice input is not supported in this browser.");
+                });
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+
+            const lang = this.config.language || 'sv';
+            if (lang === 'sv') recognition.lang = 'sv-SE';
+            else if (lang === 'de') recognition.lang = 'de-DE';
+            else recognition.lang = 'en-US';
+
+            let isListening = false;
+
+            recognition.onstart = () => {
+                isListening = true;
+                this.micBtn.classList.add('axg-listening');
+                this.input.placeholder = lang === 'sv' ? 'Lyssnar...' : (lang === 'de' ? 'Hört zu...' : 'Listening...');
+            };
+
+            recognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                this.input.value = transcript;
+            };
+
+            recognition.onerror = (event) => {
+                console.warn("🎙️ Voice recognition error:", event.error);
+                isListening = false;
+                this.micBtn.classList.remove('axg-listening');
+                const t = this.getTranslations();
+                this.input.placeholder = t.placeholder;
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                this.micBtn.classList.remove('axg-listening');
+                const t = this.getTranslations();
+                this.input.placeholder = t.placeholder;
+            };
+
+            this.micBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (isListening) {
+                    recognition.stop();
+                } else {
+                    try {
+                        recognition.start();
+                    } catch (err) {
+                        console.warn("Voice start error:", err);
+                    }
+                }
+            });
         }
 
         toggle(forceState) {
             this.isOpen = typeof forceState === 'boolean' ? forceState : !this.isOpen;
             this.window.style.display = this.isOpen ? 'flex' : 'none';
+            this.updateToggleBtnState();
             if (this.isOpen) {
                 this.scrollToBottom();
                 setTimeout(() => this.input.focus(), 100);
@@ -1298,9 +1508,17 @@ const msgLink = this.config.messenger_link || '';
                 </div>
             `;
 
+            const titleLink = card.querySelector('.axg-card-title');
+            if (titleLink) {
+                titleLink.addEventListener('click', () => {
+                    this.markAssistedSession();
+                });
+            }
+
             const btn = card.querySelector('.axg-card-btn');
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
+                this.markAssistedSession();
                 this.handleAddToCart(btn, prod);
             });
 
@@ -1308,6 +1526,7 @@ const msgLink = this.config.messenger_link || '';
         }
 
         async handleAddToCart(btn, prod) {
+            this.markAssistedSession();
             const t = this.getTranslations();
             const originalText = btn.querySelector('span').textContent;
             btn.querySelector('span').textContent = 'Lägger till...';
@@ -1437,11 +1656,25 @@ openMessenger() {
         }
 
         openWhatsApp() {
-            const rawNumber = this.config.whatsapp_number.replace(/[^0-9]/g, '');
+            const rawNumber = (this.config.whatsapp_number || '').replace(/[^0-9]/g, '');
             if (!rawNumber) return;
-            let prefill = "Hej! Jag har en fråga om er butik.";
-            if (this.config.cur_product) {
-                prefill = `Hej! Jag tittar på "${this.config.cur_product.title}" (${window.location.href}) och har en fråga:`;
+            const lastUserEntry = [...(this.history || [])].reverse().find(m => m && m.sender === 'user' && m.text);
+            const lastQuestion = lastUserEntry ? lastUserEntry.text.trim() : '';
+            const lang = this.config.language || 'sv';
+
+            let prefill = lang === 'en' ? "Hi! I have a question about your store." : (lang === 'de' ? "Hallo! Ich habe eine Frage zu Ihrem Shop." : "Hej! Jag har en fråga om er butik.");
+            if (this.config.cur_product && lastQuestion) {
+                prefill = lang === 'en'
+                    ? `Hi! I was chatting with your AI assistant about "${this.config.cur_product.title}" (${window.location.href}): "${lastQuestion}"`
+                    : `Hej! Jag pratade med AI-chatten om "${this.config.cur_product.title}" (${window.location.href}): "${lastQuestion}"`;
+            } else if (this.config.cur_product) {
+                prefill = lang === 'en'
+                    ? `Hi! I'm looking at "${this.config.cur_product.title}" (${window.location.href}) and have a question:`
+                    : `Hej! Jag tittar på "${this.config.cur_product.title}" (${window.location.href}) och har en fråga:`;
+            } else if (lastQuestion) {
+                prefill = lang === 'en'
+                    ? `Hi! I was chatting with your AI assistant on ${window.location.href}. My question: "${lastQuestion}"`
+                    : `Hej! Jag pratade med er AI-chatt på ${window.location.href}. Min fråga: "${lastQuestion}"`;
             }
             const waUrl = `https://wa.me/${rawNumber}?text=${encodeURIComponent(prefill)}`;
             window.open(waUrl, '_blank');
@@ -1452,6 +1685,8 @@ openMessenger() {
             const attachedImage = this.pendingImage;
 
             if (!text && !attachedImage) return;
+
+            this.markAssistedSession();
 
             // Clear input and attachment state
             this.input.value = '';
@@ -1542,6 +1777,31 @@ openMessenger() {
                 }
             });
         }
+
+        checkCartAbandonmentNudge() {
+            try {
+                if (sessionStorage.getItem('axg_cart_nudge_shown')) return;
+                const path = (window.location.pathname || '').toLowerCase();
+                const bodyCls = (document.body && document.body.className) ? document.body.className.toLowerCase() : '';
+                const isCartOrCheckout = /\/(cart|varukorg|kassa|checkout|warenkorb|kurv|handlekurv)(\/|$)/i.test(path) ||
+                    bodyCls.includes('woocommerce-cart') || bodyCls.includes('woocommerce-checkout');
+                if (!isCartOrCheckout) return;
+
+                setTimeout(() => {
+                    if (this.isOpen || sessionStorage.getItem('axg_cart_nudge_shown')) return;
+                    sessionStorage.setItem('axg_cart_nudge_shown', '1');
+                    this.toggle(true);
+                    const lang = this.config.language || 'sv';
+                    let nudgeMsg = "Undrar du över leveranstid, retur eller storlek innan du slutför köpet? Fråga mig så hjälper jag dig direkt! 🛍️";
+                    if (lang === 'en') {
+                        nudgeMsg = "Have a quick question about shipping times, returns, or sizing before checking out? Ask me and I'll help you right away! 🛍️";
+                    } else if (lang === 'de') {
+                        nudgeMsg = "Haben Sie noch eine Frage zu Lieferzeit, Rückgabe oder Größe vor dem Kauf? Fragen Sie mich, ich helfe Ihnen sofort! 🛍️";
+                    }
+                    this.appendMessage(nudgeMsg, 'bot', null, true);
+                }, 25000);
+            } catch (e) {}
+        }
     }
 
     // Expose global initializer
@@ -1549,9 +1809,9 @@ openMessenger() {
         return new AxgChatWidget(config);
     };
 
-    // Auto-initialize if AXG_WIDGET_CONFIG or axgai_woo_settings exists on page load
+    // Auto-initialize if AXG_WIDGET_CONFIG, axgai_woo_settings, or axgai_settings exists on page load
     const doInit = () => {
-        if (!window.axgWidgetInstance && (window.AXG_WIDGET_CONFIG || window.axgai_woo_settings)) {
+        if (!window.axgWidgetInstance && (window.AXG_WIDGET_CONFIG || window.axgai_woo_settings || window.axgai_settings)) {
             window.axgWidgetInstance = new AxgChatWidget();
         }
     };
