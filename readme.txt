@@ -3,7 +3,7 @@ Contributors: mathiasax
 Tags: woocommerce, chatbot, ai assistant, product recommendations, gemini
 Requires at least: 5.0
 Tested up to: 7.0.3
-Stable tag: 2.0.23
+Stable tag: 2.0.25
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -58,6 +58,14 @@ Yes, this plugin is specifically engineered for WooCommerce stores to retrieve a
 Absolutely! The plugin has native, built-in support for 13 global languages. Simply select your desired language in the admin configuration panel and the chat bubble will translate seamlessly.
 
 == Changelog ==
+
+= 2.0.25 =
+* Feature: Added persistent visit session state across page navigations and visual product page context indicator in the chat header.
+* Enhancement: Upgraded WooCommerce catalog caching and added automatic direct cloud connection fallback for instant, uninterrupted chat responses across all web hosts.
+
+= 2.0.24 =
+* Feature: Enhanced Zero-Config Auto-Connect with automatic WooCommerce catalog push and storefront self-healing on initial load.
+* Enhancement: Improved domain isolation and faster cloud synchronization for product carousels.
 
 = 2.0.23 =
 * Feature: Added direct admin setting toggle for the 25-second Smart Cart Abandonment Nudge under Proactive Sales Triggers.

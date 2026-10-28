@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgai_woo_chat]
- * Version: 2.0.23
+ * Version: 2.0.25
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -60,17 +60,31 @@ function axgai_woo_try_auto_connect( $force = false ) {
     $admin_email = get_option( 'admin_email', '' );
     $locale      = function_exists( 'get_locale' ) ? get_locale() : 'sv_SE';
 
-    $response = wp_remote_post( 'https://europe-west3-wp-vertex-chatbot.cloudfunctions.net/generate_demo_chatbot?action=auto_connect_wp', array(
+    $catalog_text = '';
+    if ( function_exists( 'axgai_woo_get_catalog' ) && class_exists( 'WooCommerce' ) ) {
+        $catalog = axgai_woo_get_catalog();
+        if ( ! empty( $catalog ) ) {
+            $catalog_text = "=== PRODUKTKATALOG ({$site_name}) ===\n";
+            foreach ( $catalog as $p ) {
+                $cat_str = is_array( $p['cat'] ) ? implode( ', ', $p['cat'] ) : '';
+                $catalog_text .= "- [ID:{$p['id']}] {$p['title']} | Pris: {$p['price']} | Lager: {$p['stock']} | Kategori: {$cat_str} | URL: {$p['url']} | Bild: {$p['image']}\n";
+            }
+        }
+    }
+
+    $response = wp_remote_post( 'https://europe-west3-wp-vertex-chatbot.cloudfunctions.net/generate_demo_chatbot?action=auto_connect_wp&platform=woocommerce', array(
         'method'    => 'POST',
         'headers'   => array( 'Content-Type' => 'application/json' ),
         'body'      => wp_json_encode( array(
-            'action'      => 'auto_connect_wp',
-            'site_url'    => $site_url,
-            'site_name'   => $site_name,
-            'admin_email' => $admin_email,
-            'language'    => substr( strtolower( $locale ), 0, 2 ),
+            'action'       => 'auto_connect_wp',
+            'platform'     => 'woocommerce',
+            'site_url'     => $site_url,
+            'site_name'    => $site_name,
+            'admin_email'  => $admin_email,
+            'language'     => substr( strtolower( $locale ), 0, 2 ),
+            'catalog_text' => $catalog_text,
         ) ),
-        'timeout'   => 12,
+        'timeout'   => 25,
         'sslverify' => true,
     ) );
 
@@ -95,6 +109,9 @@ function axgai_woo_try_auto_connect( $force = false ) {
         }
         if ( ! empty( $data['language'] ) && ! get_option( 'axgai_woo_language' ) ) {
             update_option( 'axgai_woo_language', sanitize_text_field( $data['language'] ) );
+        }
+        if ( ! empty( $data['contact_email'] ) && ! get_option( 'axgai_woo_contact_email' ) ) {
+            update_option( 'axgai_woo_contact_email', sanitize_email( $data['contact_email'] ) );
         }
         update_option( 'axgai_woo_auto_connected', ! empty( $data['matched'] ) ? 'matched' : 'created' );
         return true;
@@ -961,7 +978,7 @@ function axgai_woo_insights_page() {
     // Standard Conversations Listing
     // Handle 1-Click Knowledge Gap Training submission
     $knowledge_added_notice = '';
-    if ( isset( $_POST['axgai_add_knowledge_submit'] ) && check_admin_referer( 'axgai_woo_add_knowledge_nonce' ) ) {
+    if ( isset( $_POST['axgai_add_knowledge_submit'] ) && current_user_can( 'manage_options' ) && check_admin_referer( 'axgai_woo_add_knowledge_nonce' ) ) {
         $q_text = isset( $_POST['gap_question'] ) ? sanitize_text_field( wp_unslash( $_POST['gap_question'] ) ) : '';
         $a_text = isset( $_POST['gap_answer'] ) ? sanitize_textarea_field( wp_unslash( $_POST['gap_answer'] ) ) : '';
         if ( ! empty( $q_text ) && ! empty( $a_text ) ) {
@@ -1167,6 +1184,11 @@ function axgai_woo_get_catalog() {
         return array();
     }
 
+    $cached = get_transient( 'axgai_woo_catalog_cache' );
+    if ( is_array( $cached ) && ! empty( $cached ) ) {
+        return $cached;
+    }
+
     $args = array(
         'status'     => 'publish',
         'limit'      => 80, // Scans top 80 products in real-time, extremely compact!
@@ -1191,6 +1213,10 @@ function axgai_woo_get_catalog() {
         );
     }
 
+    if ( ! empty( $catalog ) ) {
+        set_transient( 'axgai_woo_catalog_cache', $catalog, 15 * MINUTE_IN_SECONDS );
+    }
+
     return $catalog;
 }
 
@@ -1199,12 +1225,17 @@ add_action( 'wp_enqueue_scripts', 'axgai_woo_enqueue_assets' );
 
 function axgai_woo_enqueue_assets() {
     $agent_id = get_option('axgai_woo_agent_id');
+    if ( ! $agent_id && ! get_transient( 'axgai_woo_autoconnect_try' ) ) {
+        set_transient( 'axgai_woo_autoconnect_try', 1, 10 * MINUTE_IN_SECONDS );
+        axgai_woo_try_auto_connect( false );
+        $agent_id = get_option('axgai_woo_agent_id');
+    }
     if ( ! $agent_id ) {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.23' );
-    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.23', true );
+    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.25' );
+    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.25', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
@@ -1463,6 +1494,7 @@ function axgai_woo_handle_chat_message() {
     $slug = sanitize_text_field( $_POST['slug'] );
     $contact_email = sanitize_email( $_POST['contact_email'] );
     $viewing_product = isset($_POST['viewing_product']) ? sanitize_text_field($_POST['viewing_product']) : '';
+    $chat_history = isset($_POST['chat_history']) ? sanitize_textarea_field($_POST['chat_history']) : '';
     // Optional base64 image data for multimodal query
     $image_base64 = isset($_POST['image_base64']) ? $_POST['image_base64'] : '';
 
@@ -1516,12 +1548,14 @@ function axgai_woo_handle_chat_message() {
         'session_id'     => $session_id,
         'language'       => $language,
         'slug'           => $slug,
+        'site_url'       => get_site_url(),
         'contact_email'  => $contact_email,
         'contact_info'   => $contact_info,
         'opening_hours'  => $opening_hours,
         'is_woocommerce' => true,
         'persona'        => $persona,
         'viewing_product'=> $viewing_product,
+        'chat_history'   => $chat_history,
         'catalog_text'   => $catalog_text
     );
 
@@ -1533,7 +1567,7 @@ function axgai_woo_handle_chat_message() {
         'method'    => 'POST',
         'headers'   => array( 'Content-Type' => 'application/json' ),
         'body'      => json_encode( $post_body ),
-        'timeout'   => 20,
+        'timeout'   => 25,
         'sslverify' => true, // Ensure secure connections in production
     ) );
 

@@ -120,6 +120,11 @@
 
             this.bindEvents();
             this.renderHistoryOrGreeting();
+            try {
+                if (sessionStorage.getItem('axg_chat_open') === '1') {
+                    this.toggle(true);
+                }
+            } catch (e) {}
             this.checkExitIntent();
             this.checkCartAbandonmentNudge();
         }
@@ -1105,6 +1110,9 @@ const msgLink = this.config.messenger_link || '';
             this.isOpen = typeof forceState === 'boolean' ? forceState : !this.isOpen;
             this.window.style.display = this.isOpen ? 'flex' : 'none';
             this.updateToggleBtnState();
+            try {
+                sessionStorage.setItem('axg_chat_open', this.isOpen ? '1' : '0');
+            } catch (e) {}
             if (this.isOpen) {
                 this.scrollToBottom();
                 setTimeout(() => this.input.focus(), 100);
@@ -1175,6 +1183,13 @@ const msgLink = this.config.messenger_link || '';
                     bar.appendChild(pill);
                 });
                 this.messagesContainer.appendChild(bar);
+            }
+
+            if (this.config.cur_product && this.config.cur_product.title) {
+                const ctxBanner = document.createElement('div');
+                ctxBanner.style.cssText = 'background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;padding:7px 11px;border-radius:8px;font-size:11.5px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;';
+                ctxBanner.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📍 Du tittar på: <strong>${this.config.cur_product.title}</strong>${this.config.cur_product.price ? ' (' + this.config.cur_product.price + ')' : ''}</span>`;
+                this.messagesContainer.appendChild(ctxBanner);
             }
 
             if (this.history.length > 0) {
@@ -1699,40 +1714,66 @@ openMessenger() {
             try {
                 // Determine destination: If running in WordPress plugin with local PHP proxy
                 let responseData = null;
+                const viewingProdStr = this.config.cur_product && this.config.cur_product.title
+                    ? `${this.config.cur_product.title} (${this.config.cur_product.price || ''})`
+                    : (document.querySelector('.product_title') ? `${document.querySelector('.product_title').textContent.trim()} (${window.location.href})` : '');
+                const recentHistText = (this.history || [])
+                    .slice(-10)
+                    .map(h => `${h.sender === 'user' ? 'Kund' : 'Assistent'}: ${String(h.text || '').replace(/:::product[\s\S]*?:::/g, '').trim()}`)
+                    .join('\n');
 
                 if (this.config.ajax_url && this.config.nonce) {
-                    // WordPress Local Hybrid Bridge
-                    const formData = new FormData();
-                    formData.append('action', 'axgai_woo_chat_message');
-                    formData.append('nonce', this.config.nonce);
-                    formData.append('agent_id', this.config.agent_id);
-                    formData.append('slug', this.config.slug);
-                    formData.append('message', text);
-                    formData.append('session_id', this.sessionId);
-                    formData.append('language', this.config.language);
-                    if (attachedImage) {
-                        formData.append('image_base64', attachedImage.base64);
-                    }
-                    if (this.config.cur_product) {
-                        formData.append('viewing_product', `${this.config.cur_product.title} (${this.config.cur_product.price})`);
-                    }
+                    try {
+                        // Use URLSearchParams (application/x-www-form-urlencoded) to avoid ModSecurity WAF 403 on Multipart FormData
+                        const formParams = new URLSearchParams();
+                        formParams.append('action', 'axgai_woo_chat_message');
+                        formParams.append('nonce', this.config.nonce);
+                        formParams.append('agent_id', this.config.agent_id);
+                        formParams.append('slug', this.config.slug || '');
+                        formParams.append('contact_email', this.config.contact_email || '');
+                        formParams.append('message', text);
+                        formParams.append('session_id', this.sessionId);
+                        formParams.append('language', this.config.language);
+                        formParams.append('chat_history', recentHistText);
+                        if (attachedImage) {
+                            formParams.append('image_base64', attachedImage.base64);
+                        }
+                        if (viewingProdStr) {
+                            formParams.append('viewing_product', viewingProdStr);
+                        }
 
-                    const res = await fetch(this.config.ajax_url, { method: 'POST', body: formData });
-                    const json = await res.json();
-                    if (json.success && json.data) {
-                        responseData = json.data.reply;
+                        const res = await fetch(this.config.ajax_url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                            body: formParams.toString()
+                        });
+                        if (res.ok) {
+                            const json = await res.json();
+                            if (json && json.success && json.data && json.data.reply) {
+                                responseData = json.data.reply;
+                            }
+                        }
+                    } catch (ajaxErr) {
+                        console.warn('Local WP AJAX notice, falling back to Cloud Direct Proxy:', ajaxErr);
                     }
-                } else {
-                    // Cloud Direct Proxy (Shopify, Embeds, Demos)
+                }
+
+                if (!responseData) {
+                    // Cloud Direct Proxy (Fallback if WP admin-ajax is blocked/slow, or on Shopify/Embeds/Demos)
                     const payload = {
                         agent_id: this.config.agent_id,
                         action: 'chat-proxy',
                         slug: this.config.slug,
+                        site_url: window.location.origin,
+                        contact_email: this.config.contact_email || '',
+                        contact_info: this.config.contact_info || '',
+                        opening_hours: this.config.opening_hours || '',
                         message: text,
                         session_id: this.sessionId,
                         language: this.config.language,
+                        chat_history: recentHistText,
                         image_base64: attachedImage ? attachedImage.base64 : null,
-                        viewing_product: this.config.cur_product ? `${this.config.cur_product.title} (${this.config.cur_product.price})` : '',
+                        viewing_product: viewingProdStr,
                         is_woocommerce: this.config.is_woocommerce
                     };
 
