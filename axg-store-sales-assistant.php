@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgai_woo_chat]
- * Version: 2.0.25
+ * Version: 2.0.27
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -72,7 +72,7 @@ function axgai_woo_try_auto_connect( $force = false ) {
         }
     }
 
-    $response = wp_remote_post( 'https://europe-west3-wp-vertex-chatbot.cloudfunctions.net/generate_demo_chatbot?action=auto_connect_wp&platform=woocommerce', array(
+    $response = wp_remote_post( 'https://api.axelsson.graphics/v1/gateway?action=auto_connect_wp&platform=woocommerce', array(
         'method'    => 'POST',
         'headers'   => array( 'Content-Type' => 'application/json' ),
         'body'      => wp_json_encode( array(
@@ -937,7 +937,7 @@ function axgai_woo_insights_page() {
         Chat logs:\n" . $chat_summary;
 
         // Secure call via central proxy
-        $response = wp_remote_post( 'https://europe-west3-wp-vertex-chatbot.cloudfunctions.net/generate_demo_chatbot', array(
+        $response = wp_remote_post( 'https://api.axelsson.graphics/v1/gateway', array(
             'method'    => 'POST',
             'headers'   => array( 'Content-Type' => 'application/json' ),
             'body'      => json_encode( array(
@@ -1234,8 +1234,8 @@ function axgai_woo_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.25' );
-    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.25', true );
+    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.27' );
+    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.27', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
@@ -1563,7 +1563,7 @@ function axgai_woo_handle_chat_message() {
         $post_body['image_base64'] = $image_base64;
     }
 
-    $response = wp_remote_post( 'https://europe-west3-wp-vertex-chatbot.cloudfunctions.net/generate_demo_chatbot', array(
+    $response = wp_remote_post( 'https://api.axelsson.graphics/v1/gateway', array(
         'method'    => 'POST',
         'headers'   => array( 'Content-Type' => 'application/json' ),
         'body'      => json_encode( $post_body ),

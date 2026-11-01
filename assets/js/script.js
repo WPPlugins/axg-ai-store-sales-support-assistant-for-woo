@@ -26,7 +26,7 @@
         avatar: '',
         theme_color: '#06b6d4',
         language: 'sv',
-        api_url: 'https://europe-west3-wp-vertex-chatbot.cloudfunctions.net/generate_demo_chatbot',
+        api_url: 'https://api.axelsson.graphics/v1/gateway',
         ajax_url: '',
         nonce: '',
         whatsapp_number: '',
@@ -65,12 +65,16 @@
         }
 
         getOrCreateSessionId() {
-            let sid = sessionStorage.getItem('axg_widget_sid');
-            if (!sid) {
-                sid = 'axg_s_' + Math.random().toString(36).substring(2, 12) + '_' + Date.now();
-                sessionStorage.setItem('axg_widget_sid', sid);
+            try {
+                let sid = sessionStorage.getItem('axg_widget_sid');
+                if (!sid) {
+                    sid = 'axg_s_' + Math.random().toString(36).substring(2, 12) + '_' + Date.now();
+                    sessionStorage.setItem('axg_widget_sid', sid);
+                }
+                return sid;
+            } catch (e) {
+                return 'axg_s_' + Math.random().toString(36).substring(2, 12) + '_' + Date.now();
             }
-            return sid;
         }
 
         loadHistory() {
@@ -89,6 +93,24 @@
         }
 
         init() {
+            try {
+                const storeSlug = this.config.slug || (this.config.agent_id || '').replace(/^axg-/, '') || window.location.hostname.replace(/^www\./, '').split('.')[0];
+                const baseAgentApi = 'https://api.axelsson.graphics/v1';
+                if (document.head && !document.head.querySelector('link[rel="ai-agent"]')) {
+                    const agentLink = document.createElement('link');
+                    agentLink.rel = 'ai-agent';
+                    agentLink.type = 'application/json';
+                    agentLink.href = `${baseAgentApi}/agent-shop?action=agent_shop&slug=${encodeURIComponent(storeSlug)}&site_url=${encodeURIComponent(window.location.origin)}`;
+                    document.head.appendChild(agentLink);
+
+                    const llmsLink = document.createElement('link');
+                    llmsLink.rel = 'llms-txt';
+                    llmsLink.type = 'text/plain';
+                    llmsLink.href = `${baseAgentApi}/llms.txt?action=llms_txt&slug=${encodeURIComponent(storeSlug)}&site_url=${encodeURIComponent(window.location.origin)}`;
+                    document.head.appendChild(llmsLink);
+                }
+            } catch (e) {}
+
             // Create root container
             this.container = document.createElement('div');
             this.container.id = 'axg-cloud-widget-root';

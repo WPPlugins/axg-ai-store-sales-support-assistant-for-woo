@@ -3,7 +3,7 @@ Contributors: mathiasax
 Tags: woocommerce, chatbot, ai assistant, product recommendations, gemini
 Requires at least: 5.0
 Tested up to: 7.0.3
-Stable tag: 2.0.25
+Stable tag: 2.0.27
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -40,7 +40,7 @@ Get instant, valuable visibility into what your customers want. The plugin secur
 This plugin connects to a third-party API to process and relay your website chat conversations securely.
 
 - **Service Name:** Axelsson Graphics AI Platform
-- **Endpoint URL:** `https://europe-west3-wp-vertex-chatbot.cloudfunctions.net`
+- **Endpoint URL:** `https://api.axelsson.graphics/v1/gateway`
 - **Why it is used:** Relays the website visitor's chat messages to our secure AI Search platform to generate AI search responses securely, protecting your server credentials from being exposed in public front-end code.
 - **Data sent:** Relays the raw chat messages typed by the visitor, their selected session ID, and the configured language code. No personal identifying information (PII) is sent unless typed by the user.
 - **Terms of Service:** [Axelsson Graphics Terms of Service](https://axelsson.graphics/terms/)
@@ -58,6 +58,12 @@ Yes, this plugin is specifically engineered for WooCommerce stores to retrieve a
 Absolutely! The plugin has native, built-in support for 13 global languages. Simply select your desired language in the admin configuration panel and the chat bubble will translate seamlessly.
 
 == Changelog ==
+
+= 2.0.27 =
+* Enhancement: Routed API gateway and AI-to-AI Agentic Commerce discovery manifests through `https://api.axelsson.graphics/v1/`.
+
+= 2.0.26 =
+* Enhancement: Improved mobile full-screen responsiveness and browser session storage compatibility in strict privacy modes.
 
 = 2.0.25 =
 * Feature: Added persistent visit session state across page navigations and visual product page context indicator in the chat header.
