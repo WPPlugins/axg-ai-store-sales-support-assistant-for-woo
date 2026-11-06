@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgai_woo_chat]
- * Version: 2.0.27
+ * Version: 2.0.28
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -219,6 +219,15 @@ function axgai_woo_settings_init() {
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_whatsapp_number', array( 'sanitize_callback' => 'sanitize_text_field' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_messenger_link', array( 'sanitize_callback' => 'esc_url_raw' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_enable_image_upload', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_widget_button_shape', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_widget_button_text', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_widget_button_size', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_widget_button_effect', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_chat_theme', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_chat_width', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_chat_radius', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_chat_bg_style', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_chat_entrance_animation', array( 'sanitize_callback' => 'sanitize_text_field' ) );
 }
 
 // --- Step 3: Admin Options Page ---
@@ -611,6 +620,115 @@ function axgai_woo_options_page() {
                         </tr>
 
                         <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">Button Shape</th>
+                            <td>
+                                <select name="axgai_woo_widget_button_shape" id="axgai_woo_widget_button_shape" style="width: 100%; max-width: 250px;">
+                                    <option value="shape-circle" <?php selected( get_option('axgai_woo_widget_button_shape', 'shape-circle'), 'shape-circle' ); ?>>Circular FAB (Default)</option>
+                                    <option value="shape-pill" <?php selected( get_option('axgai_woo_widget_button_shape'), 'shape-pill' ); ?>>Pill / Button with Text</option>
+                                </select>
+                                <p class="description" style="font-size: 11px;">Select the floating button geometry.</p>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">Pill Button Text</th>
+                            <td>
+                                <input type="text" name="axgai_woo_widget_button_text" value="<?php echo esc_attr( get_option('axgai_woo_widget_button_text', 'Chat with us') ); ?>" class="regular-text" style="width: 100%; max-width: 250px;" placeholder="e.g. Chat with us" />
+                                <p class="description" style="font-size: 11px;">Visible when "Pill / Button with Text" shape is selected.</p>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">Button Size</th>
+                            <td>
+                                <select name="axgai_woo_widget_button_size" style="width: 100%; max-width: 250px;">
+                                    <option value="50px" <?php selected( get_option('axgai_woo_widget_button_size'), '50px' ); ?>>50px (Compact)</option>
+                                    <option value="60px" <?php selected( get_option('axgai_woo_widget_button_size', '60px'), '60px' ); ?>>60px (Standard)</option>
+                                    <option value="70px" <?php selected( get_option('axgai_woo_widget_button_size'), '70px' ); ?>>70px (Large &amp; Bold)</option>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">Button Effect / Animation</th>
+                            <td>
+                                <select name="axgai_woo_widget_button_effect" style="width: 100%; max-width: 350px;">
+                                    <option value="effect-none" <?php selected( get_option('axgai_woo_widget_button_effect', 'effect-none'), 'effect-none' ); ?>>Solid Color (Default)</option>
+                                    <option value="effect-radar" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-radar' ); ?>>📡 Radar / Ripple Pulse</option>
+                                    <option value="effect-pulse" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-pulse' ); ?>>💓 Breathing Heartbeat</option>
+                                    <option value="effect-wiggle" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-wiggle' ); ?>>🔔 Playful Wiggle</option>
+                                    <option value="effect-spinner" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-spinner' ); ?>>🌈 Thin RGB Spinner Ring</option>
+                                    <option value="effect-shine" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-shine' ); ?>>✨ Sweeping Shine Glare</option>
+                                    <option value="effect-glass" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-glass' ); ?>>🪟 Frosted Glass (Glassmorphism)</option>
+                                    <option value="effect-neon" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-neon' ); ?>>💡 Glowing Neon Halo</option>
+                                    <option value="effect-hologram" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-hologram' ); ?>>🦄 Holographic Shimmer</option>
+                                    <option value="effect-sparkles" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-sparkles' ); ?>>⭐ AI Sparkles</option>
+                                    <option value="effect-3d" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-3d' ); ?>>🕹️ 3D Pop Push Effect</option>
+                                    <option value="effect-morph" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-morph' ); ?>>💧 Organic Fluid Morph</option>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">Chat Theme</th>
+                            <td>
+                                <select name="axgai_woo_chat_theme" style="width: 100%; max-width: 250px;">
+                                    <option value="light" <?php selected( get_option('axgai_woo_chat_theme', 'light'), 'light' ); ?>>☀️ Light Theme (Default)</option>
+                                    <option value="dark" <?php selected( get_option('axgai_woo_chat_theme'), 'dark' ); ?>>🌙 Dark Mode</option>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">Window Width</th>
+                            <td>
+                                <select name="axgai_woo_chat_width" style="width: 100%; max-width: 250px;">
+                                    <option value="340px" <?php selected( get_option('axgai_woo_chat_width'), '340px' ); ?>>340px (Compact)</option>
+                                    <option value="390px" <?php selected( get_option('axgai_woo_chat_width', '390px'), '390px' ); ?>>390px (Standard)</option>
+                                    <option value="440px" <?php selected( get_option('axgai_woo_chat_width'), '440px' ); ?>>440px (Wide / Spacious)</option>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">Frame &amp; Radius</th>
+                            <td>
+                                <select name="axgai_woo_chat_radius" style="width: 100%; max-width: 250px;">
+                                    <option value="rounded" <?php selected( get_option('axgai_woo_chat_radius', 'rounded'), 'rounded' ); ?>>Soft Rounded (16px)</option>
+                                    <option value="extra-rounded" <?php selected( get_option('axgai_woo_chat_radius'), 'extra-rounded' ); ?>>Extra Rounded (24px)</option>
+                                    <option value="square" <?php selected( get_option('axgai_woo_chat_radius'), 'square' ); ?>>Sharp / Modern (4px)</option>
+                                    <option value="glass" <?php selected( get_option('axgai_woo_chat_radius'), 'glass' ); ?>>🪟 Frosted Glass</option>
+                                    <option value="aurora" <?php selected( get_option('axgai_woo_chat_radius'), 'aurora' ); ?>>🌌 Glowing Aurora Frame</option>
+                                    <option value="cyber" <?php selected( get_option('axgai_woo_chat_radius'), 'cyber' ); ?>>⚡ Cyberpunk Dark</option>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">Background Gradient</th>
+                            <td>
+                                <select name="axgai_woo_chat_bg_style" style="width: 100%; max-width: 250px;">
+                                    <option value="solid" <?php selected( get_option('axgai_woo_chat_bg_style', 'solid'), 'solid' ); ?>>Solid Accent (Default)</option>
+                                    <option value="sunset" <?php selected( get_option('axgai_woo_chat_bg_style'), 'sunset' ); ?>>🌅 Sunset Orange</option>
+                                    <option value="ocean" <?php selected( get_option('axgai_woo_chat_bg_style'), 'ocean' ); ?>>🌊 Deep Ocean Blue</option>
+                                    <option value="neon" <?php selected( get_option('axgai_woo_chat_bg_style'), 'neon' ); ?>>🔮 Cyber Neon Purple</option>
+                                    <option value="aurora" <?php selected( get_option('axgai_woo_chat_bg_style'), 'aurora' ); ?>>🌲 Aurora Emerald</option>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
+                            <th scope="row" style="width: 150px; font-weight: bold;">Entrance Animation</th>
+                            <td>
+                                <select name="axgai_woo_chat_entrance_animation" style="width: 100%; max-width: 250px;">
+                                    <option value="fade-up" <?php selected( get_option('axgai_woo_chat_entrance_animation', 'fade-up'), 'fade-up' ); ?>>Smooth Slide Up</option>
+                                    <option value="spring" <?php selected( get_option('axgai_woo_chat_entrance_animation'), 'spring' ); ?>>Elastic Spring</option>
+                                    <option value="zoom" <?php selected( get_option('axgai_woo_chat_entrance_animation'), 'zoom' ); ?>>Zoom Pop from Button</option>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <tr valign="top">
                             <th scope="row" style="width: 150px; font-weight: bold;"><?php echo esc_html( $triggers_title ); ?></th>
                             <td>
                                 <label style="display: block; margin-bottom: 10px; font-size: 13px;">
@@ -709,12 +827,12 @@ function axgai_woo_options_page() {
                             <h4 style="margin: 0 0 5px 0; color: #a78bfa; font-size: 15px; font-weight: bold;"><?php echo esc_html( $gold_title ); ?></h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
                                 <?php if ($language === 'sv') : ?>
-                                    <li>Obegränsat med AI-meddelanden</li>
+                                    <li>Upp till 25 000 AI-meddelanden/mån</li>
                                     <li>Allt i Grow +</li>
                                     <li>Dedikerad personlig säljsupport</li>
                                     <li>Ingen varumärkesmärkning ("Branding")</li>
                                 <?php else : ?>
-                                    <li>Unlimited AI messages</li>
+                                    <li>Up to 25,000 AI messages/month</li>
                                     <li>Everything in Grow +</li>
                                     <li>Dedicated personal sales support</li>
                                     <li>No "Powered by" branding</li>
@@ -989,6 +1107,25 @@ function axgai_woo_insights_page() {
         }
     }
 
+    // Handle Reset Statistics & Performance
+    $stats_reset_notice = '';
+    if ( isset( $_POST['axgai_reset_stats_submit'] ) && current_user_can( 'manage_options' ) && check_admin_referer( 'axgai_woo_reset_stats_nonce' ) ) {
+        update_option( 'axgai_woo_roi_total_revenue', 0 );
+        update_option( 'axgai_woo_roi_order_count', 0 );
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $wpdb->query( "DELETE FROM {$table_name}" );
+
+        $agent_id = get_option( 'axgai_woo_agent_id' );
+        $slug     = get_option( 'axgai_woo_slug' );
+        if ( ! empty( $agent_id ) ) {
+            wp_remote_post( 'https://api.axelsson.graphics/v1/gateway?action=reset_stats&agent_id=' . urlencode( $agent_id ) . '&slug=' . urlencode( $slug ) . '&site_url=' . urlencode( get_site_url() ), array(
+                'timeout'   => 15,
+                'sslverify' => true,
+            ) );
+        }
+        $stats_reset_notice = '✅ Statistik, AI-försäljning och alla konversationsloggar har nollställts!';
+    }
+
     // Group logs by session_id and fetch count & latest timestamp
     // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
     $sessions = $wpdb->get_results( "
@@ -1052,8 +1189,14 @@ function axgai_woo_insights_page() {
             </div>
         <?php endif; ?>
 
+        <?php if ( ! empty( $stats_reset_notice ) ) : ?>
+            <div class="notice notice-success is-dismissible" style="margin: 12px 0; padding: 10px 14px; border-left-color: #10b981;">
+                <p style="margin: 0; font-weight: bold; color: #065f46;"><?php echo esc_html( $stats_reset_notice ); ?></p>
+            </div>
+        <?php endif; ?>
+
         <!-- ROI & Conversion Metrics Grid -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 22px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px;">
             <div style="background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%); border: 1px solid #a7f3d0; border-radius: 10px; padding: 18px; box-shadow: 0 2px 6px rgba(16,185,129,0.06);">
                 <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #047857; letter-spacing: 0.4px;">💰 AI-Genererad Försäljning (ROI)</div>
                 <div style="font-size: 26px; font-weight: 800; color: #065f46; margin: 6px 0 4px 0;"><?php echo $formatted_rev; ?></div>
@@ -1074,6 +1217,24 @@ function axgai_woo_insights_page() {
                 <div style="font-size: 26px; font-weight: 800; color: #7c3aed; margin: 6px 0 4px 0;"><?php echo esc_html( $hours_saved ); ?> tim</div>
                 <div style="font-size: 11px; color: #6b7280;">Uppskattad besparing (3 min / ärende)</div>
             </div>
+        </div>
+
+        <!-- Reset Stats & Conversation Logs Action Bar -->
+        <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 18px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+            <div>
+                <div style="font-size: 13px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 6px;">
+                    🔄 Hantera &amp; Nollställ Mätdata
+                </div>
+                <div style="font-size: 11.5px; color: #6b7280; margin-top: 2px;">
+                    Nollställ all AI-försäljning, orderräknare och konversationshistorik vid nylansering eller efter avslutade tester.
+                </div>
+            </div>
+            <form method="post" onsubmit="return confirm('Är du säker på att du vill nollställa all statistik, AI-genererad försäljning och konversationshistorik för din butik?');">
+                <?php wp_nonce_field( 'axgai_woo_reset_stats_nonce' ); ?>
+                <button type="submit" name="axgai_reset_stats_submit" value="1" class="button" style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600; font-size: 12px; padding: 4px 12px; border-radius: 6px; cursor: pointer;">
+                    🗑️ Nollställ statistik &amp; prestanda
+                </button>
+            </form>
         </div>
 
         <!-- Always-visible 1-Click AI Training & Identified Knowledge Gaps -->
@@ -1234,8 +1395,8 @@ function axgai_woo_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.27' );
-    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.27', true );
+    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.28' );
+    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.28', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
@@ -1282,7 +1443,16 @@ function axgai_woo_enqueue_assets() {
         'messenger_link'     => esc_url( get_option('axgai_woo_messenger_link', '') ),
         'enable_image_upload' => get_option('axgai_woo_enable_image_upload', 0),
         'enable_eye_tracking' => get_option('axgai_woo_enable_eye_tracking', 1),
-        'enable_voice_input'  => get_option('axgai_woo_enable_voice_input', 1)
+        'enable_voice_input'  => get_option('axgai_woo_enable_voice_input', 1),
+        'widget_button_shape' => esc_js( get_option('axgai_woo_widget_button_shape', 'shape-circle') ),
+        'widget_button_text'  => esc_js( get_option('axgai_woo_widget_button_text', 'Chat with us') ),
+        'widget_button_size'  => esc_js( get_option('axgai_woo_widget_button_size', '60px') ),
+        'widget_button_effect'=> esc_js( get_option('axgai_woo_widget_button_effect', 'effect-none') ),
+        'chat_theme'          => esc_js( get_option('axgai_woo_chat_theme', 'light') ),
+        'chat_width'          => esc_js( get_option('axgai_woo_chat_width', '390px') ),
+        'chat_radius'         => esc_js( get_option('axgai_woo_chat_radius', 'rounded') ),
+        'chat_bg_style'       => esc_js( get_option('axgai_woo_chat_bg_style', 'solid') ),
+        'chat_entrance_animation' => esc_js( get_option('axgai_woo_chat_entrance_animation', 'fade-up') )
     ));
 }
 

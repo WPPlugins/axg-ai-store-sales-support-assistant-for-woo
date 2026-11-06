@@ -3,7 +3,7 @@ Contributors: mathiasax
 Tags: woocommerce, chatbot, ai assistant, product recommendations, gemini
 Requires at least: 5.0
 Tested up to: 7.0.3
-Stable tag: 2.0.27
+Stable tag: 2.0.28
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -58,6 +58,10 @@ Yes, this plugin is specifically engineered for WooCommerce stores to retrieve a
 Absolutely! The plugin has native, built-in support for 13 global languages. Simply select your desired language in the admin configuration panel and the chat bubble will translate seamlessly.
 
 == Changelog ==
+
+= 2.0.28 =
+* Feature: Added customizable chat button shapes (Circle, Rounded, Square, Pill with custom text), button sizes, and 12 visual effects (Radar, Pulse, Wiggle, RGB Halo, Mirror Shine, Frosted Glass, Neon, Hologram, Sparkles, 3D Push, Liquid Blob).
+* Feature: Added chat window theme selector (Light / Dark mode), configurable window widths (340px / 390px / 440px), frame styles (Frosted Glass, Aurora, Cyber), header gradients (Sunset, Ocean, Neon, Aurora), and entrance animations directly in WP Admin.
 
 = 2.0.27 =
 * Enhancement: Routed API gateway and AI-to-AI Agentic Commerce discovery manifests through `https://api.axelsson.graphics/v1/`.

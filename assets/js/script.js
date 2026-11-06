@@ -36,7 +36,16 @@
         cur_product: null,
         is_woocommerce: true,
         enable_eye_tracking: true,
-        enable_voice_input: true
+        enable_voice_input: true,
+        widget_button_shape: 'shape-circle',
+        widget_button_text: 'Chat with us',
+        widget_button_size: '60px',
+        widget_button_effect: 'effect-none',
+        chat_theme: 'light',
+        chat_width: '390px',
+        chat_radius: 'rounded',
+        chat_bg_style: 'solid',
+        chat_entrance_animation: 'fade-up'
     };
 
     class AxgChatWidget {
@@ -56,6 +65,15 @@
             if (typeof pluginOpts.enable_voice_input !== 'undefined') {
                 pluginOpts.enable_voice_input = pluginOpts.enable_voice_input !== 0 && pluginOpts.enable_voice_input !== '0' && pluginOpts.enable_voice_input !== false;
             }
+            if (pluginOpts.widget_button_shape) pluginOpts.widget_button_shape = pluginOpts.widget_button_shape;
+            if (pluginOpts.widget_button_text) pluginOpts.widget_button_text = pluginOpts.widget_button_text;
+            if (pluginOpts.widget_button_size) pluginOpts.widget_button_size = pluginOpts.widget_button_size;
+            if (pluginOpts.widget_button_effect) pluginOpts.widget_button_effect = pluginOpts.widget_button_effect;
+            if (pluginOpts.chat_theme) pluginOpts.chat_theme = pluginOpts.chat_theme;
+            if (pluginOpts.chat_width) pluginOpts.chat_width = pluginOpts.chat_width;
+            if (pluginOpts.chat_radius) pluginOpts.chat_radius = pluginOpts.chat_radius;
+            if (pluginOpts.chat_bg_style) pluginOpts.chat_bg_style = pluginOpts.chat_bg_style;
+            if (pluginOpts.chat_entrance_animation) pluginOpts.chat_entrance_animation = pluginOpts.chat_entrance_animation;
             this.config = Object.assign({}, DEFAULT_CONFIG, pluginOpts, window.AXG_WIDGET_CONFIG || {}, userConfig);
             this.isOpen = false;
             this.pendingImage = null; // { base64, previewUrl }
@@ -218,8 +236,43 @@
             return dict[lang] || dict.en;
         }
 
+        getBubbleClasses() {
+            const classes = [];
+            if (this.config.widget_button_shape) classes.push(this.config.widget_button_shape);
+            if (this.config.widget_button_effect && this.config.widget_button_effect !== 'effect-none') {
+                classes.push(this.config.widget_button_effect);
+            }
+            return classes.join(' ');
+        }
+
+        getWindowClasses() {
+            const classes = [];
+            if (this.config.chat_theme === 'dark') classes.push('theme-dark');
+            if (this.config.chat_radius === 'square') classes.push('radius-square');
+            else if (this.config.chat_radius === 'extra-rounded') classes.push('radius-extra-rounded');
+            else if (this.config.chat_radius === 'glass') classes.push('frame-glass');
+            else if (this.config.chat_radius === 'aurora') classes.push('frame-aurora');
+            else if (this.config.chat_radius === 'cyber') classes.push('frame-cyber');
+
+            if (this.config.chat_entrance_animation === 'spring') classes.push('anim-spring');
+            else if (this.config.chat_entrance_animation === 'zoom') classes.push('anim-zoom');
+            else classes.push('anim-fade-up');
+
+            return classes.join(' ');
+        }
+
+        getHeaderClasses() {
+            const classes = ['axg-header'];
+            if (this.config.chat_bg_style && this.config.chat_bg_style !== 'solid') {
+                classes.push('bg-' + this.config.chat_bg_style);
+            }
+            return classes.join(' ');
+        }
+
         getStyles() {
             const color = this.config.theme_color || '#06b6d4';
+            const btnSize = this.config.widget_button_size || '60px';
+            const chatWidth = this.config.chat_width || '390px';
             return `
             <style>
                 :host {
@@ -230,6 +283,9 @@
                     color: #1e293b;
                     box-sizing: border-box;
                     z-index: 9999999;
+                    --axg-theme-color: ${color};
+                    --axg-btn-size: ${btnSize};
+                    --axg-chat-width: ${chatWidth};
                 }
                 *, *:before, *:after { box-sizing: border-box; }
 
@@ -238,10 +294,10 @@
                     position: fixed;
                     bottom: 24px;
                     right: 24px;
-                    width: 60px;
-                    height: 60px;
+                    width: var(--axg-btn-size, 60px);
+                    height: var(--axg-btn-size, 60px);
                     border-radius: 50%;
-                    background: ${color};
+                    background: var(--axg-theme-color, ${color});
                     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0,0,0,0.1);
                     cursor: pointer;
                     display: flex;
@@ -250,6 +306,19 @@
                     color: #ffffff;
                     transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
                     z-index: 9999999;
+                }
+                #axg-bubble.shape-pill {
+                    width: auto !important;
+                    padding: 0 22px;
+                    border-radius: 32px !important;
+                    gap: 8px;
+                }
+                .axg-fab-text {
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #ffffff;
+                    white-space: nowrap;
+                    line-height: 1;
                 }
                 #axg-bubble.axg-mascot-active {
                     width: 66px;
@@ -263,6 +332,132 @@
                     transform: scale(1.08);
                 }
                 #axg-bubble svg.axg-default-icon { width: 30px; height: 30px; fill: currentColor; }
+
+                /* FAB Animation & Effects */
+                #axg-bubble.effect-radar::before {
+                    content: '';
+                    position: absolute;
+                    inset: -6px;
+                    border-radius: inherit;
+                    border: 2px solid var(--axg-theme-color, ${color});
+                    opacity: 0.8;
+                    animation: axgRadarPulse 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+                    pointer-events: none;
+                }
+                @keyframes axgRadarPulse {
+                    0% { transform: scale(0.9); opacity: 0.9; }
+                    70% { transform: scale(1.35); opacity: 0; }
+                    100% { transform: scale(1.4); opacity: 0; }
+                }
+
+                #axg-bubble.effect-pulse {
+                    animation: axgHeartbeat 2.4s ease-in-out infinite;
+                }
+                @keyframes axgHeartbeat {
+                    0%, 100% { transform: scale(1); }
+                    14% { transform: scale(1.08); }
+                    28% { transform: scale(1); }
+                    42% { transform: scale(1.06); }
+                    70% { transform: scale(1); }
+                }
+
+                #axg-bubble.effect-wiggle {
+                    animation: axgWiggle 4s ease-in-out infinite;
+                }
+                @keyframes axgWiggle {
+                    0%, 80%, 100% { transform: rotate(0); }
+                    83% { transform: rotate(-12deg); }
+                    87% { transform: rotate(12deg); }
+                    91% { transform: rotate(-8deg); }
+                    95% { transform: rotate(8deg); }
+                    98% { transform: rotate(0); }
+                }
+
+                #axg-bubble.effect-spinner {
+                    overflow: visible;
+                }
+                #axg-bubble.effect-spinner::before {
+                    content: '';
+                    position: absolute;
+                    inset: -3px;
+                    border-radius: inherit;
+                    background: conic-gradient(#ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+                    animation: axgSpin 3s linear infinite;
+                    z-index: -1;
+                }
+                @keyframes axgSpin {
+                    100% { transform: rotate(360deg); }
+                }
+
+                #axg-bubble.effect-shine {
+                    overflow: hidden;
+                    position: fixed;
+                }
+                #axg-bubble.effect-shine::after {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: -120%;
+                    width: 60%;
+                    height: 100%;
+                    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.65), transparent);
+                    transform: skewX(-20deg);
+                    animation: axgShine 3.5s infinite;
+                }
+                @keyframes axgShine {
+                    0% { left: -120%; }
+                    20%, 100% { left: 220%; }
+                }
+
+                #axg-bubble.effect-glass {
+                    background: rgba(255, 255, 255, 0.28) !important;
+                    backdrop-filter: blur(14px);
+                    -webkit-backdrop-filter: blur(14px);
+                    border: 1.5px solid rgba(255, 255, 255, 0.55);
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+                    color: var(--axg-theme-color, ${color}) !important;
+                }
+
+                #axg-bubble.effect-neon {
+                    box-shadow: 0 0 16px var(--axg-theme-color, ${color}), 0 0 32px var(--axg-theme-color, ${color}) !important;
+                }
+
+                #axg-bubble.effect-hologram {
+                    background: linear-gradient(135deg, #ff007f, #7928ca, #00dfd8, #ff007f) !important;
+                    background-size: 300% 300% !important;
+                    animation: axgHolo 4s ease infinite alternate !important;
+                }
+                @keyframes axgHolo {
+                    0% { background-position: 0% 50%; }
+                    100% { background-position: 100% 50%; }
+                }
+
+                #axg-bubble.effect-sparkles {
+                    box-shadow: 0 0 18px rgba(251, 191, 36, 0.8), 0 0 36px rgba(245, 158, 11, 0.45) !important;
+                    animation: axgSparkleGlow 2.2s ease-in-out infinite alternate !important;
+                }
+                @keyframes axgSparkleGlow {
+                    0% { filter: drop-shadow(0 0 2px #fde047); }
+                    100% { filter: drop-shadow(0 0 10px #f59e0b); }
+                }
+
+                #axg-bubble.effect-3d {
+                    box-shadow: 0 6px 0 rgba(0,0,0,0.4), 0 12px 20px rgba(0,0,0,0.3) !important;
+                }
+                #axg-bubble.effect-3d:active {
+                    transform: translateY(4px) !important;
+                    box-shadow: 0 2px 0 rgba(0,0,0,0.4), 0 4px 10px rgba(0,0,0,0.3) !important;
+                }
+
+                #axg-bubble.effect-morph {
+                    animation: axgMorph 5s ease-in-out infinite alternate !important;
+                }
+                @keyframes axgMorph {
+                    0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+                    50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+                    100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+                }
+
                 .axg-eyes-container {
                     display: flex;
                     align-items: center;
@@ -294,7 +489,7 @@
                     position: fixed;
                     bottom: 96px;
                     right: 24px;
-                    width: 390px;
+                    width: var(--axg-chat-width, 390px);
                     max-width: calc(100vw - 32px);
                     height: 600px;
                     max-height: calc(100vh - 120px);
@@ -305,16 +500,94 @@
                     flex-direction: column;
                     overflow: hidden;
                     z-index: 9999999;
+                }
+                #axg-window.anim-fade-up {
                     animation: axgFadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                }
+                #axg-window.anim-spring {
+                    animation: axgSpring 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+                }
+                #axg-window.anim-zoom {
+                    animation: axgZoom 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+                    transform-origin: bottom right;
                 }
                 @keyframes axgFadeUp {
                     from { opacity: 0; transform: translateY(16px) scale(0.97); }
                     to { opacity: 1; transform: translateY(0) scale(1); }
                 }
+                @keyframes axgSpring {
+                    0% { opacity: 0; transform: translateY(40px) scale(0.9); }
+                    70% { opacity: 1; transform: translateY(-6px) scale(1.02); }
+                    100% { opacity: 1; transform: translateY(0) scale(1); }
+                }
+                @keyframes axgZoom {
+                    0% { opacity: 0; transform: scale(0.6); }
+                    100% { opacity: 1; transform: scale(1); }
+                }
+
+                /* Window Corner Radii */
+                #axg-window.radius-square { border-radius: 4px !important; }
+                #axg-window.radius-square .axg-header { border-radius: 0 !important; }
+                #axg-window.radius-extra-rounded { border-radius: 26px !important; }
+                #axg-window.radius-extra-rounded .axg-header { border-top-left-radius: 26px !important; border-top-right-radius: 26px !important; }
+
+                /* Glassmorphism Window */
+                #axg-window.frame-glass {
+                    background: rgba(255, 255, 255, 0.35) !important;
+                    backdrop-filter: blur(20px) !important;
+                    -webkit-backdrop-filter: blur(20px) !important;
+                    border: 1.5px solid rgba(255, 255, 255, 0.5) !important;
+                    box-shadow: 0 20px 50px rgba(0,0,0,0.18) !important;
+                }
+
+                /* Aurora Frame Window */
+                #axg-window.frame-aurora {
+                    border: 2px solid transparent !important;
+                    box-shadow: 0 0 25px rgba(6, 182, 212, 0.4), 0 16px 48px rgba(15, 23, 42, 0.2) !important;
+                }
+
+                /* Cyber Window */
+                #axg-window.frame-cyber {
+                    background: #0a0e17 !important;
+                    border: 2px solid #06b6d4 !important;
+                    box-shadow: 0 0 25px rgba(6, 182, 212, 0.35) !important;
+                }
+
+                /* Background Gradients */
+                .axg-header.bg-sunset { background: linear-gradient(135deg, #f97316 0%, #ec4899 100%) !important; }
+                .axg-header.bg-ocean { background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%) !important; }
+                .axg-header.bg-neon { background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important; }
+                .axg-header.bg-aurora { background: linear-gradient(135deg, #059669 0%, #06b6d4 100%) !important; }
+
+                /* Dark Theme */
+                #axg-window.theme-dark {
+                    background: #1e293b !important;
+                    color: #f8fafc !important;
+                    border: 1px solid #334155 !important;
+                }
+                #axg-window.theme-dark .axg-messages {
+                    background: #0f172a !important;
+                }
+                #axg-window.theme-dark .axg-msg-assistant .axg-bubble-text {
+                    background: #1e293b !important;
+                    color: #f8fafc !important;
+                    border: 1px solid #334155 !important;
+                }
+                #axg-window.theme-dark .axg-footer {
+                    background: #1e293b !important;
+                    border-top: 1px solid #334155 !important;
+                }
+                #axg-window.theme-dark #axg-input {
+                    background: #0f172a !important;
+                    color: #f8fafc !important;
+                    border: 1px solid #334155 !important;
+                }
 
                 /* Mobile Fullscreen Mode */
                 @media (max-width: 480px) {
                     #axg-window {
+                        top: 0 !important;
+                        left: 0 !important;
                         bottom: 0 !important;
                         right: 0 !important;
                         width: 100vw !important;
@@ -322,6 +595,7 @@
                         height: 100% !important;
                         max-height: 100% !important;
                         border-radius: 0 !important;
+                        transform: none !important;
                     }
                     #axg-bubble {
                         bottom: 16px;
@@ -848,7 +1122,7 @@ const msgLink = this.config.messenger_link || '';
 
             return `
             <!-- Floating Bubble -->
-            <div id="axg-bubble" role="button" aria-label="Open chat assistant">
+            <div id="axg-bubble" class="${this.getBubbleClasses()}" role="button" aria-label="Open chat assistant">
                 <div id="axg-eyes-container" class="axg-eyes-container" style="display:none;">
                     <svg class="axg-mascot-svg" width="36" height="36" viewBox="0 0 32 32" fill="none">
                       <path class="axg-mascot-bubble-path" d="M16 3C8.82 3 3 8.37 3 15C3 18.23 4.38 21.15 6.68 23.32L5 28.5L10.63 26.85C12.27 27.59 14.08 28 16 28C23.18 28 29 22.63 29 15C29 8.37 23.18 3 16 3Z" fill="${color}" />
@@ -866,12 +1140,13 @@ const msgLink = this.config.messenger_link || '';
                     </svg>
                 </div>
                 <svg id="axg-default-icon" class="axg-default-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+                ${this.config.widget_button_shape === 'shape-pill' && this.config.widget_button_text ? `<span class="axg-fab-text">${this.config.widget_button_text}</span>` : ''}
             </div>
 
             <!-- Chat Window -->
-            <div id="axg-window">
+            <div id="axg-window" class="${this.getWindowClasses()}">
                 <!-- Header -->
-                <div class="axg-header">
+                <div class="${this.getHeaderClasses()}">
                     <div class="axg-header-left">
                         <div class="axg-avatar">
                             ${this.config.avatar ? `<img src="${this.config.avatar}" alt="Avatar">` : '🤖'}
