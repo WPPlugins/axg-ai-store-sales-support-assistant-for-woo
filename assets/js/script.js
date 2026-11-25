@@ -35,7 +35,7 @@
         quick_questions: [],
         cur_product: null,
         is_woocommerce: true,
-        enable_eye_tracking: true,
+        enable_eye_tracking: false,
         enable_voice_input: true,
         widget_button_shape: 'shape-circle',
         widget_button_text: 'Chat with us',
@@ -167,6 +167,7 @@
             } catch (e) {}
             this.checkExitIntent();
             this.checkCartAbandonmentNudge();
+            this.startLiveOperatorPolling();
         }
 
         markAssistedSession() {
@@ -2011,6 +2012,7 @@ openMessenger() {
             try {
                 // Determine destination: If running in WordPress plugin with local PHP proxy
                 let responseData = null;
+                let botMutedByOperator = false;
                 const viewingProdStr = this.config.cur_product && this.config.cur_product.title
                     ? `${this.config.cur_product.title} (${this.config.cur_product.price || ''})`
                     : (document.querySelector('.product_title') ? `${document.querySelector('.product_title').textContent.trim()} (${window.location.href})` : '');
@@ -2046,8 +2048,12 @@ openMessenger() {
                         });
                         if (res.ok) {
                             const json = await res.json();
-                            if (json && json.success && json.data && json.data.reply) {
-                                responseData = json.data.reply;
+                            if (json && json.success && json.data) {
+                                if (json.data.bot_muted) {
+                                    botMutedByOperator = true;
+                                } else if (json.data.reply) {
+                                    responseData = json.data.reply;
+                                }
                             }
                         }
                     } catch (ajaxErr) {
@@ -2055,7 +2061,7 @@ openMessenger() {
                     }
                 }
 
-                if (!responseData) {
+                if (!responseData && !botMutedByOperator) {
                     // Cloud Direct Proxy (Fallback if WP admin-ajax is blocked/slow, or on Shopify/Embeds/Demos)
                     const payload = {
                         agent_id: this.config.agent_id,
@@ -2080,11 +2086,19 @@ openMessenger() {
                         body: JSON.stringify(payload)
                     });
                     const json = await res.json();
-                    responseData = json.reply;
+                    if (json && json.bot_muted) {
+                        botMutedByOperator = true;
+                    } else {
+                        responseData = json.reply;
+                    }
                 }
 
                 await this.hideTyping();
 
+                if (botMutedByOperator) {
+                    // Human operator has taken over live — AI bot stays silent while operator replies via 3.5s live poll
+                    return;
+                }
                 if (responseData) {
                     this.appendMessage(responseData, 'bot', null, true);
                 } else {
@@ -2139,6 +2153,63 @@ openMessenger() {
                     this.appendMessage(nudgeMsg, 'bot', null, true);
                 }, 25000);
             } catch (e) {}
+        }
+
+        startLiveOperatorPolling() {
+            this.seenOperatorMsgIds = new Set();
+            try {
+                const savedIds = JSON.parse(sessionStorage.getItem('axg_seen_op_ids') || '[]');
+                if (Array.isArray(savedIds)) savedIds.forEach(id => this.seenOperatorMsgIds.add(id));
+            } catch (e) {}
+
+            this.isPollingOperator = false;
+            setInterval(async () => {
+                if (this.isPollingOperator) return;
+                if (!this.isOpen && (!this.history || this.history.length <= 1)) return;
+                this.isPollingOperator = true;
+                try {
+                    const sid = encodeURIComponent(this.sessionId);
+                    const pollUrls = [
+                        `https://ops.axelsson.graphics/api/live/poll?session_id=${sid}`,
+                        `${this.config.api_url}?action=poll_live_chat&session_id=${sid}`
+                    ];
+                    let liveData = null;
+                    for (const u of pollUrls) {
+                        try {
+                            const r = await fetch(u, { method: 'GET' });
+                            if (r.ok) {
+                                const d = await r.json();
+                                if (d && d.ok) {
+                                    liveData = d;
+                                    break;
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                    if (liveData && Array.isArray(liveData.operator_messages) && liveData.operator_messages.length > 0) {
+                        for (const opMsg of liveData.operator_messages) {
+                            if (!opMsg || !opMsg.id || !opMsg.text) continue;
+                            if (!this.seenOperatorMsgIds.has(opMsg.id)) {
+                                this.seenOperatorMsgIds.add(opMsg.id);
+                                try {
+                                    sessionStorage.setItem('axg_seen_op_ids', JSON.stringify(Array.from(this.seenOperatorMsgIds)));
+                                } catch (e) {}
+                                const typingEl = this.shadow && this.shadow.getElementById('axg-typing-indicator');
+                                if (typingEl) typingEl.remove();
+                                const opLabel = opMsg.operator_name || liveData.operator_name || 'Kundtjänst';
+                                const formattedText = `**${opLabel} (Live):** ${opMsg.text}`;
+                                const alreadyInHist = (this.history || []).some(h => h && h.text === formattedText);
+                                if (!alreadyInHist) {
+                                    this.appendMessage(formattedText, 'bot', null, true);
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                } finally {
+                    this.isPollingOperator = false;
+                }
+            }, 3500);
         }
     }
 

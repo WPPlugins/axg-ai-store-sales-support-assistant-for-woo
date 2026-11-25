@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgai_woo_chat]
- * Version: 2.0.28
+ * Version: 2.0.29
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -97,6 +97,9 @@ function axgai_woo_try_auto_connect( $force = false ) {
         update_option( 'axgai_woo_agent_id', sanitize_text_field( $data['agent_id'] ) );
         if ( ! empty( $data['slug'] ) ) {
             update_option( 'axgai_woo_slug', sanitize_text_field( $data['slug'] ) );
+        }
+        if ( ! empty( $data['store_secret'] ) ) {
+            update_option( 'axgai_woo_store_secret', sanitize_text_field( $data['store_secret'] ) );
         }
         if ( ! empty( $data['color_theme'] ) && ( $force || ! get_option( 'axgai_woo_color_theme' ) ) ) {
             $clean_hex = sanitize_hex_color( $data['color_theme'] );
@@ -219,6 +222,7 @@ function axgai_woo_settings_init() {
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_whatsapp_number', array( 'sanitize_callback' => 'sanitize_text_field' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_messenger_link', array( 'sanitize_callback' => 'esc_url_raw' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_enable_image_upload', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_enable_eye_tracking', array( 'type' => 'boolean', 'sanitize_callback' => 'absint' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_widget_button_shape', array( 'sanitize_callback' => 'sanitize_text_field' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_widget_button_text', array( 'sanitize_callback' => 'sanitize_text_field' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_widget_button_size', array( 'sanitize_callback' => 'sanitize_text_field' ) );
@@ -228,6 +232,7 @@ function axgai_woo_settings_init() {
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_chat_radius', array( 'sanitize_callback' => 'sanitize_text_field' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_chat_bg_style', array( 'sanitize_callback' => 'sanitize_text_field' ) );
     register_setting( 'axgai_woo_settings_group', 'axgai_woo_chat_entrance_animation', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'axgai_woo_settings_group', 'axgai_woo_store_secret', array( 'sanitize_callback' => 'sanitize_text_field' ) );
 }
 
 // --- Step 3: Admin Options Page ---
@@ -424,6 +429,9 @@ function axgai_woo_options_page() {
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <a href="<?php echo esc_url( wp_nonce_url( add_query_arg( 'axgai_auto_connect', '1' ), 'axgai_woo_auto_connect_nonce' ) ); ?>" class="button button-primary" style="background-color: #10b981; border-color: #10b981; font-weight: bold; text-shadow: none;">
                     ⚡ <?php echo $language === 'sv' ? 'Auto-Koppla Butik (1 klick)' : 'Auto-Connect Store (1-Click)'; ?>
+                </a>
+                <a href="<?php echo esc_url( 'https://api.axelsson.graphics/v1/gateway?action=sso_token&redirect=1&agent_id=' . urlencode( get_option('axgai_woo_agent_id', '') ) . '&site_url=' . urlencode( get_site_url() ) . '&email=' . urlencode( get_option('admin_email', '') ) . '&store_secret=' . urlencode( get_option('axgai_woo_store_secret', '') ) ); ?>" target="_blank" class="button button-primary" style="background-color: #3b82f6; border-color: #2563eb; font-weight: bold; text-shadow: none;">
+                    ↗ <?php echo $language === 'sv' ? 'Öppna AxG Flow Inkorg' : 'Open AxG Flow Inbox'; ?>
                 </a>
                 <a href="<?php echo esc_url( $onboarding_url ); ?>" target="_blank" class="button button-secondary" style="font-weight: bold;">
                     <?php echo esc_html( $onboarding_btn ); ?>
@@ -666,6 +674,10 @@ function axgai_woo_options_page() {
                                     <option value="effect-3d" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-3d' ); ?>>🕹️ 3D Pop Push Effect</option>
                                     <option value="effect-morph" <?php selected( get_option('axgai_woo_widget_button_effect'), 'effect-morph' ); ?>>💧 Organic Fluid Morph</option>
                                 </select>
+                                <label style="display: block; margin-top: 10px; font-size: 13px;">
+                                    <input type="checkbox" name="axgai_woo_enable_eye_tracking" value="1" <?php checked( 1, get_option('axgai_woo_enable_eye_tracking', 0) ); ?> style="margin-right: 6px;" />
+                                    👀 <?php echo $language === 'sv' ? 'Musföljande Animerade Ögon (Rörliga ögon i chattknappen)' : 'Enable Mouse-Tracking Animated Eyes (Interactive eyes in launcher button)'; ?>
+                                </label>
                             </td>
                         </tr>
 
@@ -1395,8 +1407,8 @@ function axgai_woo_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.28' );
-    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.28', true );
+    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.29' );
+    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.29', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';
@@ -1442,7 +1454,7 @@ function axgai_woo_enqueue_assets() {
         'whatsapp_number'    => esc_js( get_option('axgai_woo_whatsapp_number', '') ),
         'messenger_link'     => esc_url( get_option('axgai_woo_messenger_link', '') ),
         'enable_image_upload' => get_option('axgai_woo_enable_image_upload', 0),
-        'enable_eye_tracking' => get_option('axgai_woo_enable_eye_tracking', 1),
+        'enable_eye_tracking' => (int) get_option('axgai_woo_enable_eye_tracking', 0),
         'enable_voice_input'  => get_option('axgai_woo_enable_voice_input', 1),
         'widget_button_shape' => esc_js( get_option('axgai_woo_widget_button_shape', 'shape-circle') ),
         'widget_button_text'  => esc_js( get_option('axgai_woo_widget_button_text', 'Chat with us') ),
@@ -1748,15 +1760,21 @@ function axgai_woo_handle_chat_message() {
     $body = wp_remote_retrieve_body( $response );
     $data = json_decode( $body, true );
 
-    $reply = isset( $data['reply'] ) ? $data['reply'] : 'No reply received.';
+    $reply = isset( $data['reply'] ) ? $data['reply'] : '';
+    $bot_muted = ! empty( $data['bot_muted'] );
+    $operator_name = isset( $data['operator_name'] ) ? $data['operator_name'] : 'Kundtjänst';
     $is_premium = isset( $data['is_premium'] ) ? (bool)$data['is_premium'] : false;
 
-    // 5. Log the bot's reply locally
-    axgai_woo_log_message( $session_id, 'bot', $reply );
+    // 5. Log the bot's reply locally if not muted by human takeover
+    if ( ! $bot_muted && ! empty( $reply ) ) {
+        axgai_woo_log_message( $session_id, 'bot', $reply );
+    }
 
     wp_send_json_success( array( 
-        'reply'      => $reply,
-        'is_premium' => $is_premium
+        'reply'         => $reply,
+        'bot_muted'     => $bot_muted,
+        'operator_name' => $operator_name,
+        'is_premium'    => $is_premium
     ) );
 }
 
@@ -1942,4 +1960,84 @@ function axgai_woo_get_order_status_api( $request ) {
     );
 
     return new WP_REST_Response( $response_data, 200 );
+}
+
+// --- Step 11: AxG Flow 1-Click Order Action REST API Route ---
+add_action( 'rest_api_init', 'axgai_woo_register_order_action_route' );
+
+function axgai_woo_register_order_action_route() {
+    register_rest_route( 'axg-woo-chatbot/v1', '/order-action', array(
+        'methods'             => 'POST',
+        'callback'            => 'axgai_woo_handle_order_action_api',
+        'permission_callback' => 'axgai_woo_check_order_action_permissions',
+    ) );
+}
+
+function axgai_woo_check_order_action_permissions( $request ) {
+    // Verify shared secret header or admin session
+    $secret = $request->get_header( 'X-AXG-Secret' );
+    $saved_secret = get_option( 'axg_woo_api_secret', '' );
+    if ( ! empty( $saved_secret ) && ! empty( $secret ) && hash_equals( $saved_secret, $secret ) ) {
+        return true;
+    }
+    return current_user_can( 'manage_woocommerce' );
+}
+
+function axgai_woo_handle_order_action_api( $request ) {
+    $params = $request->get_json_params();
+    if ( empty( $params ) ) {
+        $params = $_REQUEST;
+    }
+
+    $order_id = ! empty( $params['order_id'] ) ? sanitize_text_field( $params['order_id'] ) : '';
+    $action   = ! empty( $params['action'] ) ? sanitize_text_field( $params['action'] ) : '';
+    $reason   = ! empty( $params['reason'] ) ? sanitize_text_field( $params['reason'] ) : 'Requested via AxG Flow Support Inbox';
+    $amount   = ! empty( $params['amount'] ) ? floatval( $params['amount'] ) : 0;
+
+    if ( empty( $order_id ) || empty( $action ) ) {
+        return new WP_REST_Response( array( 'ok' => false, 'error' => 'order_id and action are required' ), 400 );
+    }
+
+    $order = wc_get_order( $order_id );
+    if ( ! $order ) {
+        return new WP_REST_Response( array( 'ok' => false, 'error' => 'Order not found' ), 404 );
+    }
+
+    if ( 'cancel' === $action ) {
+        $order->update_status( 'cancelled', sprintf( 'Avbruten via AxG Flow: %s', $reason ) );
+        return new WP_REST_Response( array( 'ok' => true, 'order_id' => $order_id, 'action' => 'cancel', 'status' => 'cancelled' ), 200 );
+    }
+
+    if ( 'refund' === $action ) {
+        $refund_amount = $amount > 0 ? $amount : floatval( $order->get_total() );
+        $refund = wc_create_refund( array(
+            'amount'   => $refund_amount,
+            'reason'   => sprintf( 'Återbetalning via AxG Flow: %s', $reason ),
+            'order_id' => $order_id,
+        ) );
+
+        if ( is_wp_error( $refund ) ) {
+            return new WP_REST_Response( array( 'ok' => false, 'error' => $refund->get_error_message() ), 500 );
+        }
+        return new WP_REST_Response( array( 'ok' => true, 'order_id' => $order_id, 'action' => 'refund', 'refunded_amount' => $refund_amount ), 200 );
+    }
+
+    if ( 'resend_confirmation' === $action ) {
+        $mailer = WC()->mailer();
+        $emails = $mailer->get_emails();
+        if ( ! empty( $emails['WC_Email_Customer_Completed_Order'] ) ) {
+            $emails['WC_Email_Customer_Completed_Order']->trigger( $order_id, $order );
+        } elseif ( ! empty( $emails['WC_Email_Customer_Processing_Order'] ) ) {
+            $emails['WC_Email_Customer_Processing_Order']->trigger( $order_id, $order );
+        }
+        $order->add_order_note( 'Orderbekräftelse återsänd via AxG Flow Support Inbox.' );
+        return new WP_REST_Response( array( 'ok' => true, 'order_id' => $order_id, 'action' => 'resend_confirmation' ), 200 );
+    }
+
+    if ( 'add_note' === $action ) {
+        $order->add_order_note( sanitize_text_field( $reason ) );
+        return new WP_REST_Response( array( 'ok' => true, 'order_id' => $order_id, 'action' => 'add_note' ), 200 );
+    }
+
+    return new WP_REST_Response( array( 'ok' => false, 'error' => 'Unsupported action' ), 400 );
 }
