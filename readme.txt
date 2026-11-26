@@ -8,24 +8,39 @@ Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Intelligent floating AI Chatbot for WooCommerce. Real-time product scanning, support FAQs, and automated back-office Conversation Insights!
+Intelligent floating AI Sales & Support Assistant for WooCommerce + AxG Flow Omnichannel Helpdesk. Real-time product carousels, 1-click Add-to-Cart, Live Takeover, Meta Omnichannel (IG DM, Messenger, WhatsApp, Email) with 24/7 AI Auto-Reply, Order Tracking, and ROI Insights!
 
 == Description ==
 
-AxG AI WooCommerce Chatbot & Product Recommender is a modern, responsive AI sales assistant for your e-commerce store. 
+**AxG AI Store Sales & Support Assistant for Woo** turns your WooCommerce store into a 24/7 conversion engine and modern omnichannel helpdesk powered by **Gemini 2.5 Flash**.
 
-By scanning your product titles, categories, short descriptions, and prices in real-time, it acts as a 24/7 dedicated personal shopper to guide visitors to the exact product they need, driving up to +15% conversion rates.
+By scanning your active WooCommerce catalog (titles, categories, descriptions, stock status, and prices) in real time, the assistant guides shoppers with interactive product carousels, 1-click Add-to-Cart, visual photo search, voice input, and instant 2-factor order tracking.
 
-= Conversation Insights =
-Get instant, valuable visibility into what your customers want. The plugin securely logs all discussions in your WordPress back-office, allowing you to run AI-powered analytics to identify popular products, user confusion, and strategic catalog improvements.
+= AxG Flow Live Takeover & Meta Omnichannel Helpdesk =
+Jump directly from your WordPress Admin into **AxG Flow** with **1-Click Passwordless SSO** ("Open AxG Flow Inbox"):
+*   **Live Human Takeover (0-Token AI Pause):** Take over any active storefront chat in real time. The AI pauses immediately while your human reply streams directly into the customer's chat window.
+*   **Full Meta Omnichannel & Support Email:** Manage **Web Chat, Instagram DM, Facebook Messenger, WhatsApp Cloud API, and Support Email (IMAP/SMTP)** in one unified, store-isolated inbox.
+*   **24/7 Per-Channel AI Auto-Reply Pilot:** Choose per channel (Instagram DM, Facebook Messenger, WhatsApp Cloud API, Support Email) whether your store's AI Assistant should automatically answer incoming customer messages using your live WooCommerce product catalog — and auto-pause whenever a human takes over.
+*   **1-Click WooCommerce Order Actions:** Trigger instant refunds, order cancellations, order confirmation resends, and internal notes directly from the chat sidebar.
+
+= AI-Assisted Revenue (ROI) & 1-Click AI Training =
+Track attributed orders, AI-generated revenue, and support hours saved inside **Conversation Insights**. Identify unanswered customer questions and add permanent Q&A rules to your AI instructions with a single click.
 
 = Key Features =
-*   **Intelligent Recommendations:** Scans and processes your store products to provide accurate recommendations.
-*   **Contextual Greeting:** Greets visitors on single product pages with personalized help regarding the specific item they are viewing.
-*   **Elegant & Responsive Interface:** Premium, modern floating bubble optimized for both mobile and desktop.
-*   **Comprehensive Conversation Insights:** Direct log of customer chats with one-click Gemini AI trend analysis in your back-office.
-*   **Cost Control Limits:** Built-in session message budgeting (50 requests/day per visitor) to safe-keep your quota.
-*   **Native Multilingual Support:** Translated and ready in English, French, Spanish, Polish, Persian, Italian, German, Portuguese, Dutch, Russian, Arabic, Turkish, and Swedish.
+*   **Real-Time Product Carousels & 1-Click Add to Cart:** Displays rich product cards with cover images, live prices, stock badges, and native WooCommerce AJAX cart additions.
+*   **Live 2-Factor Order & Shipment Tracking:** Verifies Order ID + Billing Email/Phone and generates clickable tracking links for PostNord, DHL, DB Schenker, Bring, and more.
+*   **Multimodal Visual Photo Search & Voice Input:** Customers can upload a photo to find visually matching products or speak directly using the built-in microphone button.
+*   **25s Smart Cart Abandonment Nudge & Proactive Triggers:** Proactively assists shoppers on `/cart` and `/checkout` after 25 seconds, plus Exit-Intent, Deep Scroll, and Inactivity triggers.
+*   **AI-to-AI & Agentic Commerce Ready (`0-Token`):** Makes your product catalog machine-readable (`llms.txt` & JSON Agent Catalog API) for external AI shopping agents (ChatGPT, Perplexity, Claude, Google AI).
+*   **12 Launcher Button Effects, Mouse-Tracking Animated Eyes & 4 AI Personas:** Customize button shapes, 12 visual effects (Radar, Pulse, Neon, Frosted Glass, Aurora, etc.), Light/Dark themes, and 1-click AI personality presets (Jane, Leo, Sofia, Alex).
+*   **Zero-Config 1-Click Auto-Connect & 13+ Languages:** Connects your domain automatically on activation with native support for English, Swedish, German, French, Spanish, Dutch, Danish, Polish, Italian, Portuguese, Arabic, Turkish, Russian, and Persian.
+
+= Plans & 30-Day Free Trial =
+Every store starts with a **30-day free trial** (no lock-in, cancel anytime with 1 click):
+*   **Bronze / Starter (€9.99/mo):** 1,500 AI msgs/mo, 1 read-only inbox seat, 1 store, real-time catalog carousels, 2FA order tracking, visual photo search, voice input & 25s cart nudge.
+*   **Silver / AxG Flow (€29.99/mo — Most Popular):** 5,000 AI msgs/mo, 2 operator seats, 1 store, AxG Flow Live Takeover Inbox (1-Click SSO, AI Copilot `Cmd+J`), AI-to-AI Agentic Commerce (`0-token`), and Conversation Insights.
+*   **Gold / Omnichannel Pro (€99.00/mo):** 25,000 AI msgs/mo, 8 operator seats, up to 5 stores, Full Meta Omnichannel (Instagram DM, Messenger, WhatsApp Cloud API & Support Email), **24/7 Per-Channel AI Auto-Reply**, 1-Click WooCommerce Order Actions & optional white-label.
+*   **Scale / Agency (€249.00/mo):** 75,000 AI msgs/mo, 25 operator seats, up to 15 stores, outbound CRM/ERP Webhooks (Klaviyo, HubSpot, Zapier), CSV/Excel Export API & Priority SLA. (+€9/mo per extra seat on Silver/Gold/Scale).
 
 == Installation ==
 
