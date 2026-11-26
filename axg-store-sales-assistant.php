@@ -3,7 +3,7 @@
 /**
  * Plugin Name: AxG AI Store Sales & Support Assistant for Woo
  * Description: An intelligent, floating AI sales and support assistant for WooCommerce. Recommends products, scans your catalog in real-time, answers questions about shipping, returns, order status, and tracks visitor insights. Securely powered by Gemini API. [axgai_woo_chat]
- * Version: 2.0.29
+ * Version: 2.0.30
  * Requires Plugins: woocommerce
  * Author: Axelsson Graphics
  * Author URI: https://axelsson.graphics
@@ -410,6 +410,7 @@ function axgai_woo_options_page() {
     $bronze_tracking_url = ! empty( $stripe_args ) ? add_query_arg( $stripe_args, $bronze_link ) : $bronze_link;
     $silver_tracking_url = ! empty( $stripe_args ) ? add_query_arg( $stripe_args, $silver_link ) : $silver_link;
     $gold_tracking_url   = ! empty( $stripe_args ) ? add_query_arg( $stripe_args, $gold_link ) : $gold_link;
+    $scale_tracking_url  = ! empty( $stripe_args ) ? add_query_arg( $stripe_args, 'https://axelsson.graphics/auth' ) : 'https://axelsson.graphics/auth';
     ?>
     <div class="wrap" style="max-width: 1200px;">
         <h2><?php echo esc_html( $page_title ); ?></h2>
@@ -780,103 +781,160 @@ function axgai_woo_options_page() {
                 </form>
             </div>
 
-            <!-- Premium Subscription Panel -->
-            <div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: #ffffff; padding: 35px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 30px;">
-                <h3 style="color: #38bdf8; font-size: 20px; font-weight: bold; margin-top: 0; margin-bottom: 10px; text-align: center;"><?php echo esc_html( $pricing_title ); ?></h3>
-                <p style="font-size: 13px; line-height: 1.6; color: #cbd5e1; margin-bottom: 30px; text-align: center; max-width: 800px; margin-left: auto; margin-right: auto;"><?php echo esc_html( $pricing_desc ); ?></p>
+            <!-- Compact Nordic Crisp Pricing & Plan Comparison Panel -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; padding: 22px 24px; border-radius: 10px; box-shadow: 0 1px 3px rgba(15,23,42,0.03); margin-top: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <h3 style="color: #0f172a; font-size: 16px; font-weight: 700; margin: 0;">
+                                <?php echo $language === 'sv' ? 'Paket & AxG Flow-uppgradering' : 'Plans & AxG Flow Upgrades'; ?>
+                            </h3>
+                            <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;">
+                                <?php echo $language === 'sv' ? '30 dagars fri provperiod ingår' : '30-Day Free Trial Included'; ?>
+                            </span>
+                        </div>
+                        <p style="font-size: 12px; color: #64748b; margin: 4px 0 0 0;">
+                            <?php echo $language === 'sv'
+                                ? 'Ingen bindningstid • Avsluta när som helst med 1 klick • Extra handläggarsäten: +€9/mån på Silver, Gold & Scale'
+                                : 'No lock-in period • Cancel anytime with 1 click • Extra operator seats: +€9/mo on Silver, Gold & Scale'; ?>
+                        </p>
+                    </div>
+                    <a href="https://axelsson.graphics/auth" target="_blank" rel="noopener noreferrer" class="button button-secondary" style="font-size: 12px; font-weight: 600;">
+                        <?php echo $language === 'sv' ? 'Kundportal & Hantera Prenumeration ↗' : 'Customer Portal & Billing ↗'; ?>
+                    </a>
+                </div>
 
-                <div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 20px; justify-content: center; align-items: stretch;">
-                    <!-- Starter Card -->
-                    <div style="flex: 1; min-width: 260px; max-width: 320px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(225px, 1fr)); gap: 14px; align-items: stretch;">
+                    <!-- Bronze Card -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
-                            <img src="<?php echo esc_url( plugins_url( 'assets/images/AxG_Bronz.png', __FILE__ ) ); ?>" style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" />
-                            <h4 style="margin: 0 0 5px 0; color: #10b981; font-size: 15px; font-weight: bold;"><?php echo esc_html( $bronze_title ); ?></h4>
-                            <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
-                                <?php if ($language === 'sv') : ?>
-                                    <li>500 AI-meddelanden / mån</li>
-                                    <li>Realtids-katalogskanning</li>
-                                    <li>Smart orderspårning (DHL/PostNord)</li>
-                                    <li>Automatisk FAQ (frakt & returer)</li>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+                                <span style="font-size: 14px; font-weight: 700; color: #0f172a;">Bronze / Starter</span>
+                                <span style="font-size: 16px; font-weight: 800; color: #0f172a;">€9.99<span style="font-size: 11px; font-weight: 500; color: #64748b;"><?php echo $language === 'sv' ? '/mån' : '/mo'; ?></span></span>
+                            </div>
+                            <div style="font-size: 11px; font-weight: 600; color: #475569; background: #e2e8f0; display: inline-block; padding: 2px 8px; border-radius: 4px; margin-bottom: 12px;">
+                                <?php echo $language === 'sv' ? '1 500 AI-svar/mån • 1 lässäte • 1 butik' : '1,500 AI msgs/mo • 1 read-only seat'; ?>
+                            </div>
+                            <ul style="margin: 0 0 14px 0; padding: 0; list-style: none; font-size: 12px; color: #334155; line-height: 1.65;">
+                                <?php if ( $language === 'sv' ) : ?>
+                                    <li>✓ Realtids-katalog &amp; produktkaruseller</li>
+                                    <li>✓ Live 2FA orderspårning (PostNord/DHL)</li>
+                                    <li>✓ Visuell fotosökning &amp; röstinmatning</li>
+                                    <li>✓ Automatisk FAQ &amp; 25s varukorgstrigger</li>
                                 <?php else : ?>
-                                    <li>500 AI messages / month</li>
-                                    <li>Real-time catalog scanning</li>
-                                    <li>Smart order tracking (DHL/PostNord)</li>
-                                    <li>Auto FAQ (shipping & returns)</li>
+                                    <li>✓ Real-time catalog &amp; product carousels</li>
+                                    <li>✓ Live 2FA order tracking (DHL/PostNord)</li>
+                                    <li>✓ Visual photo search &amp; voice input</li>
+                                    <li>✓ Auto FAQ &amp; 25s cart abandonment nudge</li>
                                 <?php endif; ?>
                             </ul>
                         </div>
-                        <a href="<?php echo esc_url( $bronze_tracking_url ); ?>" target="_blank" style="margin-top: 15px; display: block; background-color: #10b981; color: #0f172a; text-decoration: none; font-weight: bold; padding: 12px 15px; border-radius: 6px; font-size: 13px; text-align: center; box-shadow: 0 2px 5px rgba(16,185,129,0.1); transition: opacity 0.2s;"><?php echo esc_html( $bronze_btn ); ?></a>
+                        <a href="<?php echo esc_url( $bronze_tracking_url ); ?>" target="_blank" style="display: block; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; text-decoration: none; font-weight: 600; padding: 8px 12px; border-radius: 6px; font-size: 12px; text-align: center;">
+                            <?php echo $language === 'sv' ? 'Välj Bronze (€9.99/mån)' : 'Choose Bronze (€9.99/mo)'; ?>
+                        </a>
                     </div>
 
-                    <!-- Grow Card -->
-                    <div style="flex: 1; min-width: 260px; max-width: 320px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <!-- Silver Card (Most Popular) -->
+                    <div style="background: #f0fdf4; border: 1.5px solid #10b981; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
                         <div>
-                            <img src="<?php echo esc_url( plugins_url( 'assets/images/AxG_Silver.png', __FILE__ ) ); ?>" style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" />
-                            <h4 style="margin: 0 0 5px 0; color: #38bdf8; font-size: 15px; font-weight: bold;"><?php echo esc_html( $silver_title ); ?></h4>
-                            <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
-                                <?php if ($language === 'sv') : ?>
-                                    <li>2 000 AI-meddelanden / mån</li>
-                                    <li>Allt i Starter +</li>
-                                    <li>Dynamiska produktside-hälsningar</li>
-                                    <li>Conversation Insights Dashboard</li>
-                                    <li>Gemini Trendanalys-rapporter</li>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+                                <span style="font-size: 14px; font-weight: 700; color: #065f46;">Silver / AxG Flow ⭐</span>
+                                <span style="font-size: 16px; font-weight: 800; color: #065f46;">€29.99<span style="font-size: 11px; font-weight: 500; color: #047857;"><?php echo $language === 'sv' ? '/mån' : '/mo'; ?></span></span>
+                            </div>
+                            <div style="font-size: 11px; font-weight: 600; color: #065f46; background: #d1fae5; display: inline-block; padding: 2px 8px; border-radius: 4px; margin-bottom: 12px;">
+                                <?php echo $language === 'sv' ? '5 000 AI-svar/mån • 2 säten • 1 butik' : '5,000 AI msgs/mo • 2 seats • 1 store'; ?>
+                            </div>
+                            <ul style="margin: 0 0 14px 0; padding: 0; list-style: none; font-size: 12px; color: #064e3b; line-height: 1.65;">
+                                <?php if ( $language === 'sv' ) : ?>
+                                    <li>✓ Allt i Bronze + <strong>AxG Flow Live Takeover</strong></li>
+                                    <li>✓ 1-klicks SSO, AI Copilot (Cmd+J) &amp; notiser</li>
+                                    <li>✓ <strong>AI-to-AI Agentic Commerce</strong> (0-token)</li>
+                                    <li>✓ Conversation Insights &amp; Gemini-analys</li>
                                 <?php else : ?>
-                                    <li>2,000 AI messages / month</li>
-                                    <li>Everything in Starter +</li>
-                                    <li>Dynamic product-page greetings</li>
-                                    <li>Conversation Insights Dashboard</li>
-                                    <li>Gemini Trend Analysis reports</li>
+                                    <li>✓ Everything in Bronze + <strong>Live Takeover</strong></li>
+                                    <li>✓ 1-Click SSO, AI Copilot (Cmd+J) &amp; notes</li>
+                                    <li>✓ <strong>AI-to-AI Agentic Commerce</strong> (0-token)</li>
+                                    <li>✓ Conversation Insights &amp; Gemini reports</li>
                                 <?php endif; ?>
                             </ul>
                         </div>
-                        <a href="<?php echo esc_url( $silver_tracking_url ); ?>" target="_blank" style="margin-top: 15px; display: block; background-color: #38bdf8; color: #0f172a; text-decoration: none; font-weight: bold; padding: 12px 15px; border-radius: 6px; font-size: 13px; text-align: center; box-shadow: 0 2px 5px rgba(56,189,248,0.1); transition: opacity 0.2s;"><?php echo esc_html( $silver_btn ); ?></a>
+                        <a href="<?php echo esc_url( $silver_tracking_url ); ?>" target="_blank" style="display: block; background: #10b981; color: #ffffff; text-decoration: none; font-weight: 700; padding: 8px 12px; border-radius: 6px; font-size: 12px; text-align: center;">
+                            <?php echo $language === 'sv' ? 'Välj Silver (€29.99/mån)' : 'Choose Silver (€29.99/mo)'; ?>
+                        </a>
                     </div>
 
-                    <!-- Pro Card -->
-                    <div style="flex: 1; min-width: 260px; max-width: 320px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <!-- Gold Card -->
+                    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
-                            <img src="<?php echo esc_url( plugins_url( 'assets/images/AxG_Gold.png', __FILE__ ) ); ?>" style="width: 100%; height: auto; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" />
-                            <h4 style="margin: 0 0 5px 0; color: #a78bfa; font-size: 15px; font-weight: bold;"><?php echo esc_html( $gold_title ); ?></h4>
-                            <ul style="margin: 0 0 15px 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
-                                <?php if ($language === 'sv') : ?>
-                                    <li>Upp till 25 000 AI-meddelanden/mån</li>
-                                    <li>Allt i Grow +</li>
-                                    <li>Dedikerad personlig säljsupport</li>
-                                    <li>Ingen varumärkesmärkning ("Branding")</li>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+                                <span style="font-size: 14px; font-weight: 700; color: #1e1b4b;">Gold / Omnichannel</span>
+                                <span style="font-size: 16px; font-weight: 800; color: #1e1b4b;">€99.00<span style="font-size: 11px; font-weight: 500; color: #64748b;"><?php echo $language === 'sv' ? '/mån' : '/mo'; ?></span></span>
+                            </div>
+                            <div style="font-size: 11px; font-weight: 600; color: #3730a3; background: #e0e7ff; display: inline-block; padding: 2px 8px; border-radius: 4px; margin-bottom: 12px;">
+                                <?php echo $language === 'sv' ? '25 000 AI-svar/mån • 8 säten • 5 butiker' : '25,000 AI msgs/mo • 8 seats • 5 stores'; ?>
+                            </div>
+                            <ul style="margin: 0 0 14px 0; padding: 0; list-style: none; font-size: 12px; color: #334155; line-height: 1.65;">
+                                <?php if ( $language === 'sv' ) : ?>
+                                    <li>✓ Allt i Silver + <strong>Full Meta Omnichannel</strong></li>
+                                    <li>✓ IG DM, Messenger, WhatsApp &amp; Support-mejl</li>
+                                    <li>✓ <strong>24/7 AI Auto-Reply per kanal</strong> &amp; Order Actions</li>
+                                    <li>✓ Upp till 5 butiker &amp; valfri vitmärkning</li>
                                 <?php else : ?>
-                                    <li>Up to 25,000 AI messages/month</li>
-                                    <li>Everything in Grow +</li>
-                                    <li>Dedicated personal sales support</li>
-                                    <li>No "Powered by" branding</li>
+                                    <li>✓ Everything in Silver + <strong>Meta Omnichannel</strong></li>
+                                    <li>✓ IG DM, Messenger, WhatsApp &amp; Support Email</li>
+                                    <li>✓ <strong>24/7 Per-Channel AI Auto-Reply</strong> &amp; Order Actions</li>
+                                    <li>✓ Up to 5 stores &amp; no "Powered by" branding</li>
                                 <?php endif; ?>
                             </ul>
                         </div>
-                        <a href="<?php echo esc_url( $gold_tracking_url ); ?>" target="_blank" style="margin-top: 15px; display: block; background-color: #a78bfa; color: #0f172a; text-decoration: none; font-weight: bold; padding: 12px 15px; border-radius: 6px; font-size: 13px; text-align: center; box-shadow: 0 2px 5px rgba(167,139,250,0.1); transition: opacity 0.2s;"><?php echo esc_html( $gold_btn ); ?></a>
+                        <a href="<?php echo esc_url( $gold_tracking_url ); ?>" target="_blank" style="display: block; background: #0f172a; color: #ffffff; text-decoration: none; font-weight: 600; padding: 8px 12px; border-radius: 6px; font-size: 12px; text-align: center;">
+                            <?php echo $language === 'sv' ? 'Välj Gold (€99/mån)' : 'Choose Gold (€99/mo)'; ?>
+                        </a>
+                    </div>
+
+                    <!-- Scale Card -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+                                <span style="font-size: 14px; font-weight: 700; color: #0f172a;">Scale / Agency</span>
+                                <span style="font-size: 16px; font-weight: 800; color: #0f172a;">€249.00<span style="font-size: 11px; font-weight: 500; color: #64748b;"><?php echo $language === 'sv' ? '/mån' : '/mo'; ?></span></span>
+                            </div>
+                            <div style="font-size: 11px; font-weight: 600; color: #6b21a8; background: #f3e8ff; display: inline-block; padding: 2px 8px; border-radius: 4px; margin-bottom: 12px;">
+                                <?php echo $language === 'sv' ? '75 000 AI-svar/mån • 25 säten • 15 butiker' : '75,000 AI msgs/mo • 25 seats • 15 stores'; ?>
+                            </div>
+                            <ul style="margin: 0 0 14px 0; padding: 0; list-style: none; font-size: 12px; color: #334155; line-height: 1.65;">
+                                <?php if ( $language === 'sv' ) : ?>
+                                    <li>✓ Allt i Gold + <strong>upp till 15 butiker</strong></li>
+                                    <li>✓ <strong>CRM &amp; ERP Webhooks</strong> (Klaviyo/HubSpot)</li>
+                                    <li>✓ <strong>CSV / Excel Export API</strong> &amp; Executive SLA</li>
+                                    <li>✓ Enterprise (100 000+ svar/mån): Kontakta oss</li>
+                                <?php else : ?>
+                                    <li>✓ Everything in Gold + <strong>up to 15 stores</strong></li>
+                                    <li>✓ <strong>CRM &amp; ERP Webhooks</strong> (Klaviyo/HubSpot)</li>
+                                    <li>✓ <strong>CSV / Excel Export API</strong> &amp; Priority SLA</li>
+                                    <li>✓ Enterprise (100,000+ msgs/mo): Contact us</li>
+                                <?php endif; ?>
+                            </ul>
+                        </div>
+                        <a href="<?php echo esc_url( $scale_tracking_url ); ?>" target="_blank" style="display: block; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; text-decoration: none; font-weight: 600; padding: 8px 12px; border-radius: 6px; font-size: 12px; text-align: center;">
+                            <?php echo $language === 'sv' ? 'Välj Scale (€249/mån)' : 'Choose Scale (€249/mo)'; ?>
+                        </a>
                     </div>
                 </div>
 
-                <!-- Legal disclaimer below cards -->
-                <p style="text-align: center; font-size: 11px; color: #cbd5e1; margin-top: 25px; margin-bottom: 0; line-height: 1.5; max-width: 700px; margin-left: auto; margin-right: auto;">
-                    <?php if ($language === 'sv') : ?>
-                        Genom att uppgradera godkänner du våra <a href="https://axelsson.graphics/terms" target="_blank" style="color: #38bdf8; text-decoration: underline;">Användarvillkor</a> och vår krocksäkra <a href="https://axelsson.graphics/terms" target="_blank" style="color: #38bdf8; text-decoration: underline;">Fair Use Policy</a>. Vi stänger aldrig av din bot automatiskt vid tillfälliga trafiktoppar.
-                    <?php elseif ($language === 'de') : ?>
-                        Mit dem Upgrade akzeptieren Sie unsere <a href="https://axelsson.graphics/terms" target="_blank" style="color: #38bdf8; text-decoration: underline;">Nutzungsbedingungen</a> und unsere <a href="https://axelsson.graphics/terms" target="_blank" style="color: #38bdf8; text-decoration: underline;">Fair Use Policy</a>. Wir schalten Ihren Bot bei vorübergehenden Datenverkehrsspitzen nicht automatisch ab.
-                    <?php else : ?>
-                        By upgrading, you agree to our <a href="https://axelsson.graphics/terms" target="_blank" style="color: #38bdf8; text-decoration: underline;">Terms of Use</a> and our crash-proof <a href="https://axelsson.graphics/terms" target="_blank" style="color: #38bdf8; text-decoration: underline;">Fair Use Policy</a>. We never automatically disable your bot during temporary traffic spikes.
-                    <?php endif; ?>
-                </p>
-
-                <!-- Manage Subscription below cards -->
-                <div style="text-align: center; margin-top: 15px;">
-                    <?php if ($language === 'sv') : ?>
-                        <a href="mailto:support@axelsson.graphics?subject=Avregistrera" style="font-size: 11px; color: #94a3b8; text-decoration: underline;">Hantera eller avsluta din prenumeration</a>
-                    <?php elseif ($language === 'de') : ?>
-                        <a href="mailto:support@axelsson.graphics?subject=Abmelden" style="font-size: 11px; color: #94a3b8; text-decoration: underline;">Abonnement verwalten oder kündigen</a>
-                    <?php else : ?>
-                        <a href="mailto:support@axelsson.graphics?subject=Unsubscribe" style="font-size: 11px; color: #94a3b8; text-decoration: underline;">Manage or cancel your subscription</a>
-                    <?php endif; ?>
+                <!-- Compact Legal & Self-Service Footer -->
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #f1f5f9; font-size: 11px; color: #64748b;">
+                    <span>
+                        <?php if ( $language === 'sv' ) : ?>
+                            Krocksäker <a href="https://axelsson.graphics/terms" target="_blank" style="color: #0284c7; text-decoration: none;">Fair Use Policy</a> &amp; <a href="https://axelsson.graphics/terms" target="_blank" style="color: #0284c7; text-decoration: none;">Användarvillkor</a> – vi stänger aldrig av din bot vid tillfälliga trafiktoppar.
+                        <?php else : ?>
+                            Crash-proof <a href="https://axelsson.graphics/terms" target="_blank" style="color: #0284c7; text-decoration: none;">Fair Use Policy</a> &amp; <a href="https://axelsson.graphics/terms" target="_blank" style="color: #0284c7; text-decoration: none;">Terms of Use</a> — we never disable your bot during temporary traffic spikes.
+                        <?php endif; ?>
+                    </span>
+                    <a href="https://axelsson.graphics/auth" target="_blank" style="color: #475569; text-decoration: underline;">
+                        <?php echo $language === 'sv' ? 'Hantera eller avsluta prenumeration (1 klick)' : 'Manage or cancel subscription (1 click)'; ?>
+                    </a>
                 </div>
-
             </div>
         </div>
     </div>
@@ -1407,8 +1465,8 @@ function axgai_woo_enqueue_assets() {
         return; // Only load if Agent ID is configured
     }
 
-    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.29' );
-    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.29', true );
+    wp_enqueue_style( 'axgai_woo-style', plugins_url( 'assets/css/style.css', __FILE__ ), array(), '2.0.30' );
+    wp_enqueue_script( 'axgai_woo-script', plugins_url( 'assets/js/script.js', __FILE__ ), array('jquery'), '2.0.30', true );
 
     // Inline current page context (Check if on single product page!)
     $current_product_info = '';

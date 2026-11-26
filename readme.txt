@@ -3,7 +3,7 @@ Contributors: mathiasax
 Tags: woocommerce, chatbot, ai assistant, product recommendations, gemini
 Requires at least: 5.0
 Tested up to: 7.0.3
-Stable tag: 2.0.29
+Stable tag: 2.0.30
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -58,6 +58,9 @@ Yes, this plugin is specifically engineered for WooCommerce stores to retrieve a
 Absolutely! The plugin has native, built-in support for 13 global languages. Simply select your desired language in the admin configuration panel and the chat bubble will translate seamlessly.
 
 == Changelog ==
+
+= 2.0.30 =
+* Enhancement: Redesigned the admin Plans & AxG Flow Upgrades section into a clean, compact 4-tier Nordic Crisp grid (Bronze €9.99/mo, Silver €29.99/mo, Gold €99.00/mo, Scale €249.00/mo) with updated message quotas, operator seats, and 24/7 Per-Channel AI Auto-Reply features.
 
 = 2.0.29 =
 * Feature: Added 1-Click SSO button ("Open AxG Flow Inbox") in WordPress Admin to jump directly into the AxG Flow Live Takeover & Omnichannel Helpdesk without passwords.
